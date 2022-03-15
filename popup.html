@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+	<title>AnkiFlash Extension</title>
+
+	<link rel="stylesheet" href="./external/css/bootstrap.css">
+	<link rel="stylesheet" href="./popup.css">
+
+	<script type="text/javascript" src="./external/js/jquery-3.6.0.min.js"></script>
+	<script type="module" src="./popup.js"></script>
+
+</head>
+
+<body class="text-light">
+	<div class="container pb-1 pt-1">
+
+		<div class="d-flex justify-content-center mt-5 mr-5">
+
+			<form class="form-inline mb-1">
+				<div class="form-check-inline form-switch">
+					<input class="form-check-input" type="checkbox" id="enableAnkiFlash">
+					<label class="form-check-label" for="enableAnkiFlash">AnkiFlash</label>
+				</div>
+			</form>
+
+			<div id="alert" class="alert alert-success pb-1 pt-1" role="alert"></div>
+		</div>
+	</div>
+</body>
+
+</html>

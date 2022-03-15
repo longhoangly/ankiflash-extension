@@ -1,0 +1,62 @@
+{
+  "name": "AnkiFlash",
+  "description": "A small extension helps to get web content / page source and send it back to a local server",
+  "version": "1.0",
+  "manifest_version": 3,
+  "homepage_url": "https://ankiflash.com",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.collinsdictionary.com/*"
+      ],
+      "js": [
+        "external/js/jquery-3.6.0.min.js",
+        "content.js"
+      ]
+    }
+  ],
+  "minimum_chrome_version": "93",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "common.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "permissions": [
+    "tabs",
+    "storage",
+    "activeTab",
+    "contextMenus",
+    "unlimitedStorage",
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback"
+  ],
+  "host_permissions": [
+    "*://localhost/*",
+    "*://*.collinsdictionary.com/*"
+  ],
+  "action": {
+    "default_icon": {
+      "16": "/img/favicon16.png",
+      "32": "/img/favicon32.png",
+      "48": "/img/favicon48.png",
+      "128": "/img/favicon128.png"
+    },
+    "default_title": "AnkiFlash",
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "/img/favicon16.png",
+    "32": "/img/favicon32.png",
+    "48": "/img/favicon48.png",
+    "128": "/img/favicon128.png"
+  }
+}
