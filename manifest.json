@@ -32,12 +32,7 @@
   ],
   "permissions": [
     "tabs",
-    "storage",
-    "activeTab",
-    "contextMenus",
-    "unlimitedStorage",
-    "declarativeNetRequest",
-    "declarativeNetRequestFeedback"
+    "storage"
   ],
   "host_permissions": [
     "*://localhost/*",
