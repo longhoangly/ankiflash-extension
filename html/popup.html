@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Anki-Extra Popup</title>
+
+    <link rel="stylesheet" href="../css/external/bootstrap.css" />
+    <script type="text/javascript" src="../js/external/jquery-3.6.0.min.js"></script>
+    <script type="text/javascript" src="../js/external/bootstrap.bundle.js"></script>
+
+    <link rel="stylesheet" href="../css/popup.css" />
+    <script type="module" src="../js/extension/popup.js"></script>
+</head>
+
+<body class="text-light">
+    <div class="container pb-1 pt-2">
+
+        <div class="d-flex align-items-center">
+            <button id="exportChromeStorage" type="submit" class="btn btn-sm btn-outline-light mb-2 me-1">
+                Export Storage
+            </button>
+            <button id="getStorageKeys" type="submit" class="btn btn-sm btn-outline-light mb-2 me-1">
+                Get Storage Keys
+            </button>
+            <button id="removeStorage" type="submit" class="btn btn-sm btn-outline-light mb-2 me-1">
+                Remove Storage
+            </button>
+
+            <input type="text" class="form-control" id="storageKeys"
+                placeholder="Enter Your Storage Keys (seperated by comma)" />
+        </div>
+
+        <textarea type="text" class="form-control" id="links" placeholder="Enter Your Links Here."></textarea>
+
+        <button id="urlsAllWindows" type="submit" class="btn btn-sm btn-outline-light mb-2">
+            URLs All Windows
+        </button>
+        <button id="urlsCurrentWindow" type="submit" class="btn btn-sm btn-outline-light mb-2">
+            URLs Current Window
+        </button>
+
+        <button id="openTabs" type="submit" class="btn btn-sm btn-outline-light mb-2">
+            Open Tabs
+        </button>
+        <button id="closeTabs" type="submit" class="btn btn-sm btn-outline-light mb-2">
+            Close Tabs
+        </button>
+
+        <button id="copy" type="submit" class="btn btn-sm btn-outline-light mb-2">
+            Copy
+        </button>
+        <button id="clear" type="submit" class="btn btn-sm btn-outline-light mb-2">
+            Clear
+        </button>
+
+        <div class="form-row">
+            <div class="form-group col-md-8 tab-list">
+                <span class="text-light">Links List</span>
+                <select id="linkList" class="form-select form-select-sm">
+                    <option value="W10=">Choose A List</option>
+                </select>
+
+                <button id="editList" type="submit" class="btn btn-sm btn-outline-light mb-2">
+                    Update List
+                </button>
+
+                <button id="deleteList" type="submit" class="btn btn-sm btn-outline-light mb-2">
+                    Delete List
+                </button>
+            </div>
+
+            <div class="form-group col-md-4 name-list">
+                <span class="text-light">List Name (for creation only)</span>
+                <input type="text" class="form-control" id="listName" placeholder="Enter Your List Name" />
+
+                <button id="createList" type="submit" class="btn btn-sm btn-outline-light mb-2">
+                    Create List
+                </button>
+            </div>
+        </div>
+
+        <div id="alert" class="alert alert-success" role="alert"></div>
+    </div>
+</body>
+
+</html>

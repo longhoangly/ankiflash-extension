@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>AnkiFlash Configurations</title>
+
+	<link rel="stylesheet" href="../css/external/bootstrap.css">
+	<script type="text/javascript" src="../js/external/jquery-3.6.0.min.js"></script>
+	<script type="text/javascript" src="../js/external/bootstrap.bundle.js"></script>
+
+	<link rel="stylesheet" href="../css/options.css">
+	<script type="module" src="../js/extension/options.js"></script>
+</head>
+
+<body class="text-light">
+	<div class="container">
+		<div class="row d-flex justify-content-center mt-5">
+			<h3> JSON Configurations </h3>
+			<textarea type="text" spellcheck="false" class="form-control mb-3" id="options"
+				placeholder="Enter JSON here."></textarea>
+		</div>
+
+		<button id="saveBtn" type="submit" class="btn btn-outline-light my-2">Save Settings</button>
+		<button id="resetBtn" type="submit" class="btn btn-outline-light my-2">Reset Settings</button>
+
+		<div id="alert" class="alert alert-success" role="alert" style="display: none;"></div>
+</body>
+
+</html>

@@ -1,0 +1,32 @@
+@font-face {
+    font-family: "Mali";
+    src: url("external/Mali-Light.ttf") format("truetype");
+}
+
+* {
+    font-size: 12px !important;
+}
+
+body {
+    font-family: "Mali", sans-serif !important;
+    background: #343a40 !important;
+}
+
+button {
+    margin-bottom: 4px !important;
+    border-color: slategrey !important;
+}
+
+#options {
+    min-height: 600px;
+    height: 80vh;
+    font-size: 15px !important;
+}
+
+.form-control {
+    padding: 3px 6px !important;
+}
+
+.form-group {
+    margin: 6px 0px !important;
+}

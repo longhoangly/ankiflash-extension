@@ -1,0 +1,10 @@
+{
+    "traffic": {
+        "isTrafficBlocked": false,
+        "baseUrls": ["facebook.com", "messenger.com", "zalo.me"]
+    },
+    "totalTryTimes": 5,
+    "retryCodes": [],
+    "retryInterval": 3000,
+    "requestTimeout": 30
+}

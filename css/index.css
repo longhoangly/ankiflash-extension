@@ -1,0 +1,45 @@
+@font-face {
+    font-family: "Mali";
+    src: url("external/Mali-Light.ttf") format("truetype");
+}
+
+*:not(h1, h2, h3) {
+    font-size: 13px !important;
+}
+
+body {
+    font-family: "Mali", sans-serif !important;
+    background: #343a40 !important;
+}
+
+.form-control {
+    padding: 3px 6px 3px 6px !important;
+}
+
+.form-control:disabled {
+    color: darkgrey;
+}
+
+.form-select {
+    padding: 3px 37px 3px 6px !important;
+}
+
+.form-group {
+    margin: 6px 0px !important;
+}
+
+button:disabled {
+    color: gray !important;
+}
+
+a {
+    color: greenyellow;
+}
+
+a:hover {
+    color: yellow;
+}
+
+textarea {
+    resize: none;
+}

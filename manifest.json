@@ -1,57 +1,53 @@
 {
-  "name": "AnkiFlash",
-  "description": "A small extension helps to get web content / page source and send it back to a local server",
-  "version": "1.0",
-  "manifest_version": 3,
-  "homepage_url": "https://ankiflash.com",
-  "content_scripts": [
-    {
-      "matches": [
-        "https://*.collinsdictionary.com/*"
-      ],
-      "js": [
-        "external/js/jquery-3.6.0.min.js",
-        "content.js"
-      ]
-    }
-  ],
-  "minimum_chrome_version": "93",
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "common.js"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ],
-  "permissions": [
-    "tabs",
-    "storage"
-  ],
-  "host_permissions": [
-    "*://localhost/*",
-    "*://*.collinsdictionary.com/*"
-  ],
-  "action": {
-    "default_icon": {
-      "16": "/img/favicon16.png",
-      "32": "/img/favicon32.png",
-      "48": "/img/favicon48.png",
-      "128": "/img/favicon128.png"
+    "name": "AnkiFlash Generator",
+    "description": "A tool to generate flash-cards for importing into Anki language app (https://apps.ankiweb.net).",
+    "version": "1.0",
+    "manifest_version": 3,
+    "homepage_url": "https://ankiflash.com",
+    "author": "hoanglongtc7@gmail.com",
+    "content_scripts": [
+        {
+            "matches": ["https://test.com/"],
+            "js": ["js/external/jquery-3.6.0.min.js", "js/extension/content.js"]
+        }
+    ],
+    "options_page": "html/options.html",
+    "minimum_chrome_version": "110",
+    "background": {
+        "service_worker": "js/extension/background.js",
+        "type": "module"
     },
-    "default_title": "AnkiFlash",
-    "default_popup": "popup.html"
-  },
-  "icons": {
-    "16": "/img/favicon16.png",
-    "32": "/img/favicon32.png",
-    "48": "/img/favicon48.png",
-    "128": "/img/favicon128.png"
-  }
+    "web_accessible_resources": [
+        {
+            "resources": ["js/*"],
+            "matches": ["<all_urls>"]
+        }
+    ],
+    "permissions": [
+        "tabs",
+        "activeTab",
+        "storage",
+        "unlimitedStorage",
+        "cookies",
+        "contextMenus",
+        "declarativeNetRequest",
+        "declarativeNetRequestFeedback"
+    ],
+    "host_permissions": ["<all_urls>"],
+    "action": {
+        "default_icon": {
+            "16": "/css/img/favicon16.png",
+            "32": "/css/img/favicon32.png",
+            "48": "/css/img/favicon48.png",
+            "128": "/css/img/favicon128.png"
+        },
+        "default_title": "AnkiFlash Generator",
+        "default_popup": "html/popup.html"
+    },
+    "icons": {
+        "16": "/css/img/favicon16.png",
+        "32": "/css/img/favicon32.png",
+        "48": "/css/img/favicon48.png",
+        "128": "/css/img/favicon128.png"
+    }
 }

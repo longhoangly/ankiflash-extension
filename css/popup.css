@@ -1,0 +1,65 @@
+@font-face {
+    font-family: "Mali";
+    src: url("external/Mali-Light.ttf") format("truetype");
+}
+
+* {
+    font-size: 12px !important;
+}
+
+body {
+    font-family: "Mali", sans-serif !important;
+    background: #343a40 !important;
+    height: 300px;
+    width: 800px;
+}
+
+.form-row {
+    display: flex;
+}
+
+.container {
+    max-width: 100% !important;
+}
+
+textarea {
+    text-align: top;
+    width: 100%;
+    min-height: 250px !important;
+    border-width: 2px;
+    border-radius: 3px;
+    color: inherit;
+    resize: none;
+    font-size: small !important;
+}
+
+.form-select,
+.form-control {
+    padding: 3px 6px !important;
+}
+
+.form-control:disabled {
+    color: darkgrey;
+}
+
+.tab-list {
+    padding-right: 3px;
+}
+
+.name-list {
+    padding-left: 3px;
+}
+
+button {
+    margin-top: 5px;
+    border-color: slategrey !important;
+}
+
+#storageKeys {
+    width: 50%;
+}
+
+#alert {
+    display: none;
+    margin-bottom: 5px !important;
+}
