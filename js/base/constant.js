@@ -1,13 +1,15 @@
-import { Translation } from "../ankiflash/dto/translation.js";
 import { Base } from "./base.js";
+import { Translation } from "../ankiflash/dto/translation.js";
 
 export class Constant extends Base {
+    // --- FRAMEWORK CONSTANTS ---
     static TODAY = Base.getCurrentDate();
 
     static AUTO_COMPLETE_FIELD_IDS = [];
 
     static FINISHED_MSG = "===>>>>>>> Finished Execution ===>>>>>>>";
 
+    // --- APP CONSTANTS ---
     // ANKI
     static ANKI_DECK = "anki_deck.csv";
     static MAPPING_CSV = "mapping.csv";
@@ -78,17 +80,16 @@ export class Constant extends Base {
     static NOT_SUPPORTED_TRANSLATION =
         "The translation from {} to {} is not supported!";
 
-    // LANGUAGES
-    static ENGLISH = "english";
-    static FRENCH = "french";
-    static VIETNAMESE = "vietnamese";
-    static CHINESE = "chinese";
-    static CHINESE_TD = "chineseTd";
-    static CHINESE_SP = "chineseSp";
-    static JAPANESE = "japanese";
-    static SPANISH = "spanish";
+    // LANGUAGES (1)
+    static ENGLISH = "English";
+    static FRENCH = "French";
+    static VIETNAMESE = "Vietnamese";
+    static CHINESE_TD = "Chinese (Traditional)";
+    static CHINESE_SP = "Chinese (Simplified)";
+    static JAPANESE = "Japanese";
+    static SPANISH = "Spanish";
 
-    // TRANSLATION
+    // TRANSLATIONS (2)
     static EN_EN = new Translation(Constant.ENGLISH, Constant.ENGLISH);
     static EN_VN = new Translation(Constant.ENGLISH, Constant.VIETNAMESE);
     static EN_CN_TD = new Translation(Constant.ENGLISH, Constant.CHINESE_TD);
@@ -107,35 +108,32 @@ export class Constant extends Base {
     static JP_EN = new Translation(Constant.JAPANESE, Constant.ENGLISH);
     static JP_VN = new Translation(Constant.JAPANESE, Constant.VIETNAMESE);
 
-    // AnkiFlash fields for mapping content
-    static ANKI_FLASH_FIELDS = [
-        "Word",
-        "WordType",
-        "Phonetic",
-        "Example",
-        "Sound",
-        "Image",
-        "Meaning",
-        "Copyright",
-    ];
+    // DICTIONARIES (3)
+    static LACVIET = "Lacviet";
+    static OXFORD = "Oxford";
+    static CAMBRIDGE = "Cambridge";
+    static COLLINS = "Collins";
+    static KANTAN = "Kantan";
+    static JISHO = "Jisho";
 
-    // All supported languages
-    static SUPPORTED_TRANSLATIONS = {
-        ENGLISH: [
-            Constant.ENGLISH,
-            Constant.VIETNAMESE,
-            Constant.CHINESE_TD,
-            Constant.CHINESE_SP,
-            Constant.FRENCH,
-            Constant.JAPANESE,
+    // TRANSLATIONS (4)
+    static SUPPORTED_TRANSLATIONS_BY_DICTS = {
+        Lacviet: [
+            Constant.VN_EN,
+            Constant.VN_FR,
+            Constant.VN_VN,
+            Constant.EN_VN,
+            Constant.FR_VN,
         ],
-        VIETNAMESE: [
-            Constant.ENGLISH,
-            Constant.FRENCH,
-            Constant.JAPANESE,
-            Constant.VIETNAMESE,
+        Oxford: [Constant.EN_EN],
+        Cambridge: [
+            Constant.EN_CN_TD,
+            Constant.EN_CN_SP,
+            Constant.EN_FR,
+            Constant.EN_JP,
         ],
-        FRENCH: [Constant.ENGLISH, Constant.VIETNAMESE],
-        JAPANESE: [Constant.ENGLISH, Constant.VIETNAMESE],
+        Collins: [Constant.FR_EN],
+        Kantan: [Constant.VN_JP, Constant.JP_VN],
+        Jisho: [Constant.JP_EN],
     };
 }

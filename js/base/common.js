@@ -21,18 +21,16 @@ export class Common extends Constant {
         });
     }
 
-    static configDataFields(fieldConfigs) {
+    static async configDataFields(fieldConfigs) {
         for (const config of fieldConfigs) {
             for (const field of config.fields) {
+                let value = await Common.#configFieldHandler(config, field);
+                if (field.autocomplete) {
+                    Common.#addOptionAutoCompleteField(value, field.id);
+                    Common.AUTO_COMPLETE_FIELD_IDS.push(field.id);
+                }
+
                 Common.#popuplateDataOptions(config, field.id);
-
-                Common.#configFieldHandler(config, field).then((value) => {
-                    if (field.autocomplete) {
-                        Common.#addOptionAutoCompleteField(value, field.id);
-                        Common.AUTO_COMPLETE_FIELD_IDS.push(field.id);
-                    }
-                });
-
                 Common.#configFieldTriggers(config, field, fieldConfigs);
                 Common.#configFieldOptionsTriggers(config, field, fieldConfigs);
             }
@@ -40,16 +38,17 @@ export class Common extends Constant {
     }
 
     static async #popuplateDataOptions(config, fieldId, force = false) {
-        if (config.options !== undefined && Array.isArray(config.options)) {
+        if (config.options != undefined && Array.isArray(config.options)) {
             if (config.options.length === 0) {
                 let noOptionsString = "No Optionsss";
-                await Common.#setFieldOptions(fieldId, [
+                await Common.setFieldOptions(fieldId, [
                     { value: noOptionsString, text: noOptionsString },
                 ]);
                 await Common.setFieldValue(fieldId, noOptionsString);
             } else {
-                await Common.#setFieldOptions(fieldId, config.options);
+                await Common.setFieldOptions(fieldId, config.options);
                 let storageValue = await Common.getStorage(fieldId);
+
                 if (
                     !config.options
                         .map((o) => String(o.value))
@@ -60,10 +59,9 @@ export class Common extends Constant {
                             ? config.options[config.options.length - 1].value
                             : "";
                 }
-                await Common.setStorage(fieldId, storageValue);
+                await Common.setFieldValue(fieldId, storageValue);
             }
-            $(`#${fieldId}`).trigger("input");
-        } else if (config.options !== undefined) {
+        } else if (config.options != undefined) {
             let optionsKey = `${fieldId}Options`;
             let storageOptions = await Common.getStorage(optionsKey);
 
@@ -77,7 +75,7 @@ export class Common extends Constant {
                 force ||
                 forceRefreshOptions ||
                 storageOptions === undefined ||
-                // Refresh options list after one day
+                // refresh options list after one day
                 (Date.now() - created) / 1000 > 86400
             ) {
                 storageOptions = await config.options(fieldId);
@@ -330,7 +328,7 @@ export class Common extends Constant {
         }
     }
 
-    static async #setFieldOptions(fieldId, options) {
+    static async setFieldOptions(fieldId, options) {
         $(`#${fieldId}`).find("option").remove();
         for (let option of options) {
             $("<option/>")
@@ -461,8 +459,7 @@ export class Common extends Constant {
 
     static async getFieldValue(key, defaultValue = "") {
         let storageValue = await Common.getStorage(key);
-
-        if (storageValue === undefined || ["routeDate"].includes(key)) {
+        if (storageValue == undefined) {
             await Common.setStorage(key, defaultValue);
         }
 

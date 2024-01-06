@@ -1,0 +1,31 @@
+.form-control {
+    border-radius: 3px;
+    margin-bottom: 3px;
+    padding: 3px 6px 3px 6px !important;
+}
+
+.form-control:disabled {
+    background-color: #bccbcb;
+}
+
+.form-select {
+    margin-bottom: 3px;
+    padding: 3px 35px 3px 6px !important;
+}
+
+button:disabled {
+    color: gray !important;
+}
+
+a {
+    color: greenyellow;
+}
+
+a:hover {
+    color: yellow;
+}
+
+textarea {
+    resize: none;
+    font-size: small !important;
+}

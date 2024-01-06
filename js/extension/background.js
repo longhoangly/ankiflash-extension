@@ -13,7 +13,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     let appUrl;
     if (tab) {
         if (info.menuItemId === "ankiFlash") {
-            appUrl = chrome.runtime.getURL("html/index.html");
+            appUrl = chrome.runtime.getURL("html/ankiflash.html");
         }
         chrome.tabs.create({ url: appUrl, active: true, index: 0 });
     }

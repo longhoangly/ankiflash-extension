@@ -1,6 +1,6 @@
 {
     "name": "AnkiFlash Generator",
-    "description": "A tool to generate flash-cards for importing into Anki language app (https://apps.ankiweb.net).",
+    "description": "A tool generates flash-cards for importing into Anki memorizing app (https://apps.ankiweb.net).",
     "version": "1.0",
     "manifest_version": 3,
     "homepage_url": "https://ankiflash.com",
