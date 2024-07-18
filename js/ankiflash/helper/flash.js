@@ -59,10 +59,13 @@ export class Flash {
         return examples.join("");
     }
 
-    static async downloadFiles(urls) {
+    static async downloadFiles(urls, filename = "") {
         let downloadInfos = [];
+
         for (const url of urls) {
-            const partialFilePath = `AnkiFlash/${url.split("/").pop()}`;
+            const partialFilePath =
+                filename || `AnkiFlash/${url.split("/").pop()}`;
+
             const downloadId = await chrome.downloads.download({
                 url: url,
                 filename: partialFilePath,

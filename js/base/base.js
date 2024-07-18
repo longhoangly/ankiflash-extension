@@ -467,6 +467,18 @@ export class Base {
         }
     }
 
+    static getPercentageValue(arr, percent) {
+        if (arr.length === 0) {
+            return undefined;
+        }
+
+        arr.sort((a, b) => a - b);
+        const lowIndex = parseInt(arr.length * percent);
+        const upIndex = Math.floor(arr.length * percent);
+
+        return (arr[lowIndex] + arr[upIndex]) / 2;
+    }
+
     static async setElementColor(selector, colorCode) {
         // $(selector).css("cssText", `color: ${colorCode} !important`);
         // $(selector).css({"font-style": "italic", "font-weight": "bold","text-decoration": "underline"});
@@ -1210,9 +1222,16 @@ export class Base {
     }
 
     static async exportCsvFile(rows, fileName) {
-        var encodedUri = Base.generateCsvUrl(rows);
+        // each row is an array of text cells
+        Base.logWarn("Downloading csv file which contains below rows", rows);
 
+        let csvContent =
+            "data:application/csv;charset=utf-8," +
+            rows.map((e) => e.join(",")).join("\n");
+
+        var encodedUri = encodeURI(csvContent);
         var link = document.createElement("a");
+
         link.setAttribute("href", encodedUri);
         link.setAttribute("download", fileName);
 
@@ -1221,19 +1240,5 @@ export class Base {
 
         link.click();
         link.remove();
-    }
-
-    static async generateCsvUrl(rows) {
-        // each row is an array of text cells
-        Base.logWarn(
-            "Generating url of csv file which contains below rows",
-            rows
-        );
-
-        let csvContent =
-            "data:application/csv;charset=utf-8," +
-            rows.map((e) => e.join(",")).join("\n");
-
-        return encodeURI(csvContent);
     }
 }

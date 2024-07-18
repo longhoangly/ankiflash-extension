@@ -117,13 +117,18 @@ export class Generator {
             ]);
         }
 
-        await Common.exportCsvFile(
-            cardLines,
-            `AnkiFlash/${Constant.ANKI_DECK}`
-        );
+        var deckBlob = new Blob(cardLines, {
+            type: "text/plain",
+        });
+        var deckUrl = URL.createObjectURL(deckBlob);
+        await Flash.downloadFiles([deckUrl], `AnkiFlash/${Constant.ANKI_DECK}`);
 
-        await Common.exportCsvFile(
-            mappingLines,
+        let mappingBlob = new Blob(mappingLines, {
+            type: "text/plain",
+        });
+        let mappingUrl = URL.createObjectURL(mappingBlob);
+        await Flash.downloadFiles(
+            [mappingUrl],
             `AnkiFlash/${Constant.MAPPING_CSV}`
         );
     }
