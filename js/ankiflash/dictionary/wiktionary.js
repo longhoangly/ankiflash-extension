@@ -1,10 +1,24 @@
 import { Common } from "../../base/common.js";
+import { Constant } from "../../base/constant.js";
 
-export class Cambridge {
+export class Wiktionary {
     cardInputDto;
 
     constructor(cardInputDto) {
         this.cardInputDto = cardInputDto;
+    }
+
+    async standardizedWords() {
+        Common.logWarn("standardizedWords", Wiktionary.name);
+
+        let standardizedWords = [];
+        standardizedWords.push({
+            word: this.cardInputDto.word,
+            wordId: this.cardInputDto.word,
+            wordOri: this.cardInputDto.word,
+        });
+
+        return standardizedWords;
     }
 
     async getWordTypes() {

@@ -2,25 +2,24 @@ var processingChanges = false;
 
 $(document).ready(async () => {
     // Loading common.js dynamic
-    const src = chrome.runtime.getURL("js/base/common.js");
-    const commonFile = await import(src);
+    const commonModule = await import(
+        chrome.runtime.getURL("js/base/common.js")
+    );
 
-    let currentUrl = window.location.href;
-    commonFile.Common.logWarning(
+    commonModule.Common.logWarn(
         "[AnkiFlash] checking current URL",
-        currentUrl,
+        window.location.href,
         document.title
     );
 
-    if (currentUrl.includes("test.com")) {
+    if (window.location.href.includes("xxx")) {
         // Code executed on specific URL
     }
 });
 
 class Content {
-    static async #getHtml(url) {
-        let html = document.documentElement.innerHTML;
-        commonFile.Common.logWarning("Getting HTML from", url, html);
-        return html;
+    static async #getHtml() {
+        commonModule.Common.logWarn("Getting HTML from", window.location.href);
+        return document.documentElement.innerHTML;
     }
 }

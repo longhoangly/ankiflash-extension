@@ -3,7 +3,7 @@
 <html>
 
 <head>
-    <title>AnkiFlash Generator</title>
+    <title>AnkiFlash</title>
 
     <link rel="stylesheet" href="../css/external/jquery-ui.min.css" />
     <link rel="stylesheet" href="../css/external/bootstrap.css" />
@@ -19,7 +19,7 @@
 
 <body class="text-light">
     <div class="container mt-4">
-        <h2>AnkiFlash Generator</h2>
+        <h2>AnkiFlash</h2>
         <p>This small tool generates flash-cards for importing into Anki memorizing app (https://apps.ankiweb.net)</p>
 
         <div class="row">
@@ -50,14 +50,14 @@
                         <legend class="float-none w-auto mb-0 px-2">Other Options</legend>
 
                         <div class="row">
-                            <div class="col">
-                                <input type="checkbox" id="allWordTypes"> All word types?
+                            <div class="col" style="display: none;">
+                                <input type="checkbox" class="form-check-input" id="relatedWords"> All related words?
                             </div>
                             <div class="col">
-                                <input type="checkbox" id="isOnline"> Online sound?
+                                <input type="checkbox" class="form-check-input" id="isOnline"> Online sound?
                             </div>
                             <div class="col">
-                                <input type="checkbox" id="isAutoDict"> Auto select dictionary?
+                                <input type="checkbox" class="form-check-input" id="isAutoDict"> Auto select dictionary?
                             </div>
                         </div>
 
@@ -118,7 +118,7 @@
                                         <th class="count" scope="row"></th>
                                         <td name="ankifield">Content</td>
                                         <td name="dictionary">
-                                            <select id="contentDict" class="form-select form-select-sm mb-0">
+                                            <select id="meaningDict" class="form-select form-select-sm mb-0">
                                             </select>
                                         </td>
                                     </tr>
@@ -131,7 +131,7 @@
                     <div class="row align-items-center">
                         <div class="col-auto">
                             <button id="btnGenerate" type="button"
-                                class="btn btn-sm btn-outline-light border-secondary">Generate</button>
+                                class="btn btn-sm btn-secondary border-secondary">Generate</button>
                         </div>
 
                         <div class="col">
@@ -145,7 +145,7 @@
                             <button id="btnCancel" type="button"
                                 class="btn btn-sm btn-outline-light border-secondary">Cancel</button>
                             <button id="btnDownload" type="button"
-                                class="btn btn-sm btn-outline-light border-secondary">Donwload</button>
+                                class="btn btn-sm btn-secondary border-secondary">Donwload</button>
                         </div>
                     </div>
                 </fieldset>
@@ -155,18 +155,18 @@
                 <fieldset class="border border-secondary rounded p-2">
                     <legend class="float-none w-auto mb-0 px-2">Output</legend>
 
-                    <textarea id="outputTxt" class="form-control" cols="30" rows="8" placeholder="Output Cards"
+                    <textarea id="outputTxt" class="form-control" cols="30" placeholder="Output Cards"
                         readonly></textarea>
                     <label id="outputLbl" class="counts mb-3">Completed: 0</label>
 
-                    <textarea id="failureTxt" class="form-control" cols="30" rows="7" placeholder="Failure Cards"
+                    <textarea id="failureTxt" class="form-control" cols="30" placeholder="Failure Cards"
                         readonly></textarea>
                     <label id="failureLbl" class="counts" style="margin-bottom: 2px;">Failure: 0</label>
                 </fieldset>
             </div>
         </div>
 
-        <div class="row mt-2">
+        <div class="row mt-2 mb-4">
             <fieldset class="border border-secondary rounded p-2">
                 <legend class="float-none w-auto mb-0 px-2">AnkiFlash Info</legend>
 

@@ -1,213 +1,175 @@
-#!/usr/bin/python
+import { Common } from "../../base/common.js";
+import { Constant } from "../../base/constant.js";
+import { Flash } from "../helper/flash.js";
 
-import logging
-from typing import List
+export class Oxford {
+    cardInputDto;
 
-from ..constant import Constant
-from ..enum.meaning import Meaning
-from ..enum.translation import Translation
-from ..helpers.html import HtmlHelper
-from ..helpers.dictionary import DictHelper
-from ..base_dictionary import BaseDictionary
+    constructor(cardInputDto) {
+        this.cardInputDto = cardInputDto;
+    }
 
+    async standardizedWords() {
+        Common.logWarn("standardizedWords", Oxford.name);
 
-class OxfordDictionary(BaseDictionary):
-    def __init__(self):
-        super().__init__()
+        let standardizedWords = [];
+        standardizedWords.push({
+            word: this.cardInputDto.word,
+            wordId: this.cardInputDto.word,
+            wordOri: this.cardInputDto.word,
+        });
 
-    def search(self, formattedWord: str, translation: Translation) -> bool:
-        """Find input word from dictionary data"""
+        return standardizedWords;
+    }
 
-        wordParts = formattedWord.split(Constant.SUB_DELIMITER)
-        if Constant.SUB_DELIMITER in formattedWord and len(wordParts) == 3:
-            self.word = wordParts[0]
-            self.wordId = wordParts[1]
-            self.oriWord = wordParts[2]
-        else:
-            raise RuntimeError("Incorrect word format: {}".format(formattedWord))
+    async getWordTypes() {
+        Common.logWarn(
+            `getWordTypes ${this.cardInputDto.dictionaries.wordTypesDict}`
+        );
+        await this.#getOxfordDocument();
 
-        url = HtmlHelper.lookup_url(Constant.OXFORD_URL_EN_EN, self.wordId)
-        self.doc = HtmlHelper.get_document(url)
+        let wordTypes = $(this.cardInputDto.oxfordDocument).find("span.pos");
+        wordTypes = `(${$(wordTypes[0].outerHTML).text()})`;
 
-        return True if not self.doc else False
+        Common.logWarn("wordTypes", wordTypes);
+        return wordTypes;
+    }
 
-    def is_invalid_word(self) -> bool:
-        """Check if the input word exists in dictionary?"""
+    async getPhonetics() {
+        Common.logWarn(
+            `getPhonetics ${this.cardInputDto.dictionaries.phoneticsDict}`
+        );
+        await this.#getOxfordDocument();
 
-        title = HtmlHelper.get_text(self.doc, "title", 0)
-        if (
-            Constant.OXFORD_SPELLING_WRONG in title
-            or Constant.OXFORD_WORD_NOT_FOUND in title
-        ):
-            return True
+        let phonetics = $(this.cardInputDto.oxfordDocument).find("span.phon");
+        phonetics = `${$(phonetics[0].outerHTML).text()} ${$(
+            phonetics[1].outerHTML
+        ).text()}`;
 
-        self.word = HtmlHelper.get_text(self.doc, ".headword", 0)
-        return False if self.word else True
+        Common.logWarn("phonetics", phonetics);
+        return phonetics;
+    }
 
-    def get_word_type(self) -> str:
-        if not self.wordType:
-            self.wordType = HtmlHelper.get_text(self.doc, "span.pos", 0)
-            self.wordType = "(" + self.wordType + ")" if self.wordType else ""
-        return self.wordType
+    async getExamples(count = 5) {
+        Common.logWarn(
+            `getExamples ${this.cardInputDto.dictionaries.examplesDict}`
+        );
+        await this.#getOxfordDocument();
 
-    def get_example(self) -> str:
-        examples: list[str] = []
-        for i in range(4):
-            example: str = HtmlHelper.get_text(self.doc, "span.x", i)
-            if not example and i == 0:
-                return Constant.NO_EXAMPLE
-            elif not example or example is None:
-                break
-            else:
-                self.word = self.word.lower()
-                example = example.lower()
-                if self.word in example:
-                    example = example.replace(self.word, "{{c1::" + self.word + "}}")
-                else:
-                    # Anki will not hide the word, if we don't have "{{c1::...}}" for all examples!
-                    example = "{} {}".format(example, "{{c1::...}}")
-                examples.append(example)
+        let exampleTags = $(this.cardInputDto.oxfordDocument).find("span.x");
+        exampleTags = exampleTags.slice(0, count);
 
-        logging.info("examples: {}".format(examples))
-        return HtmlHelper.build_example(examples)
+        let examples = [];
+        for (const exampleTag of exampleTags) {
+            examples.push($(exampleTag.outerHTML).text());
+        }
 
-    def get_phonetic(self) -> str:
-        if not self.phonetic:
-            phoneticBrE = HtmlHelper.get_text(self.doc, "span.phon", 0)
-            phoneticNAmE = HtmlHelper.get_text(self.doc, "span.phon", 1)
-            self.phonetic = "{} {}".format(phoneticBrE, phoneticNAmE).replace(
-                "//", " / "
-            )
-        return self.phonetic
+        if (examples.length === 0) {
+            return Constant.NO_EXAMPLE;
+        }
 
-    def get_image(self, ankiDir: str, isOnline: bool) -> str:
-        self.ankiDir = ankiDir
-        googleImage = '<a href="https://www.google.com/search?biw=1280&bih=661&tbm=isch&sa=1&q={}" style="font-size: 15px; color: blue">Search images by the word</a>'.format(
-            self.oriWord
-        )
+        let word = this.cardInputDto.standardizedWord.word;
+        for (let i = 0; i < examples.length; i++) {
+            if (examples[i].includes(word)) {
+                examples[i] = examples[i].replaceAll(word, `{{c1::${word}}}`);
+            } else {
+                examples[i] = "{} {}".format(examples[i], "{{c1::...}}");
+            }
+        }
 
-        self.imageLink = HtmlHelper.get_attribute(self.doc, "a.topic", 0, "href")
+        return await Flash.buildExamples(examples);
+    }
 
-        if not self.imageLink:
-            self.image = googleImage
-            return self.image
+    async getSounds() {
+        Common.logWarn(
+            `getSounds ${this.cardInputDto.dictionaries.soundsDict}`
+        );
+        await this.#getOxfordDocument();
 
-        imageName = DictHelper.get_last_url_segment(self.imageLink)
-        if isOnline:
-            self.image = '<img src="' + self.imageLink + '"/>'
-        else:
-            self.image = '<img src="' + imageName + '"/>'
-            DictHelper.download_files(self.imageLink, False, ankiDir)
-        return self.image
+        let soundLinks = [];
+        for (const selector of ["div.pron-uk", "div.pron-us"]) {
+            let [soundTag] = $(this.cardInputDto.oxfordDocument).find(selector);
+            soundLinks.push($(soundTag.outerHTML).attr("data-src-mp3"));
+        }
 
-    def get_sounds(self, ankiDir: str, isOnline: bool) -> List[str]:
-        self.ankiDir = ankiDir
-        self.soundLinks = HtmlHelper.get_attribute(
-            self.doc, "div.pron-uk", 0, "data-src-mp3"
-        )
+        Common.logWarn("soundLinks", soundLinks);
+        if (!this.cardInputDto.isOnline) {
+            await Flash.downloadFiles(soundLinks);
+        }
 
-        if not self.soundLinks:
-            self.sounds = ""
-            self.soundLinks = ""
-            return self.sounds
+        let sounds = [];
+        for (let sound of soundLinks) {
+            if (!this.cardInputDto.isOnline) {
+                sound = sound.split("/").pop();
+            }
 
-        usSound = HtmlHelper.get_attribute(self.doc, "div.pron-us", 0, "data-src-mp3")
-        if usSound:
-            self.soundLinks = "{};{}".format(usSound, self.soundLinks)
-
-        links = DictHelper.download_files(self.soundLinks, isOnline, ankiDir)
-        for soundLink in links:
-            soundName = DictHelper.get_last_url_segment(soundLink)
-            if isOnline:
-                self.sounds = '<audio src="{}" type="audio/wav" preload="auto" autobuffer controls>[sound:{}]</audio> {}'.format(
-                    soundLink, soundLink, self.sounds if len(self.sounds) > 0 else ""
+            sounds.push(
+                '<audio src="{}" type="audio/wav" preload="auto" autobuffer controls>[sound:{}]</audio>'.format(
+                    sound,
+                    sound
                 )
-            else:
-                self.sounds = '<audio src="{}" type="audio/wav" preload="auto" autobuffer controls>[sound:{}]</audio> {}'.format(
-                    soundName, soundName, self.sounds if len(self.sounds) > 0 else ""
-                )
+            );
+        }
 
-        return self.sounds
+        return sounds.join(" ");
+    }
 
-    def get_meaning(self) -> str:
-        self.get_word_type()
-        self.get_phonetic()
+    async getImages() {
+        Common.logWarn(
+            `getImages ${this.cardInputDto.dictionaries.imagesDict}`
+        );
+        await this.#getOxfordDocument();
 
-        meanings: list[Meaning] = []
+        let [imageTag] = $(this.cardInputDto.oxfordDocument).find("a.topic");
+        if (imageTag) {
+            let imageLink = $(imageTag.outerHTML).attr("href");
 
-        # Word Form
-        wordFormElm = self.doc.select_one('span.unbox[unbox="verbforms"]')
-        if wordFormElm:
-            wordFormElms = wordFormElm.select("td.verbforms")
-            wordForms = []
-            for wordForm in wordFormElms:
-                wordForms.append(wordForm.get_text().strip())
+            let image = imageLink;
+            Common.logWarn("imageLink", imageLink);
 
-            meaning = Meaning("", wordForms)
-            meaning.wordType = "Verb forms"
-            meanings.append(meaning)
+            if (!this.cardInputDto.isOnline) {
+                await Flash.downloadFiles([imageLink]);
+                image = imageLink.split("/").pop();
+            }
 
-        meanGroups = self.doc.select(".sense")
-        for meanElem in meanGroups:
-            defElm = meanElem.select_one(".def")
+            image = '<img src="' + image + '"/>';
+            return image;
+        } else {
+            return '<a href="https://www.google.com/search?biw=1280&bih=661&tbm=isch&sa=1&q={}" style="font-size: 15px; color: blue">Search Images</a>'.format(
+                this.cardInputDto.standardizedWord.wordOri
+            );
+        }
+    }
 
-            # See Also
-            examples = []
-            subDefElm = meanElem.select_one(".xrefs")
-            if subDefElm:
-                subDefPrefix = subDefElm.select_one(".prefix")
-                subDefLink = subDefElm.select_one(".Ref")
-                if (
-                    subDefPrefix
-                    and subDefLink
-                    and "full entry" in subDefLink.get("title")
-                ):
-                    examples.append(
-                        '<a href="{}">{} {}</a>'.format(
-                            subDefLink.get("href"),
-                            subDefPrefix.get_text().strip().upper(),
-                            subDefLink.get_text().strip(),
-                        )
-                    )
+    async getMeaning() {
+        Common.logWarn(
+            `getMeaning ${this.cardInputDto.dictionaries.meaningDict}`
+        );
+        await this.#getOxfordDocument();
 
-            # Examples
-            exampleElms = meanElem.select(".x")
-            for exampleElem in exampleElms:
-                examples.append(exampleElem.get_text().strip())
-            meanings.append(
-                Meaning(defElm.get_text().strip() if defElm else "", examples)
-            )
+        let [contentTag] = $(this.cardInputDto.oxfordDocument).find(
+            "#entryContent"
+        );
 
-            # Extra Examples
-            extraExample = HtmlHelper.get_child_element(
-                meanElem, 'span.unbox[unbox="extra_examples"]', 0
-            )
-            if extraExample:
-                exampleElms = extraExample.select(".unx")
+        let entryContent = $(contentTag.outerHTML).prop("outerHTML");
+        entryContent = entryContent.replaceAll("\n", "").replaceAll("\r", "");
+        entryContent =
+            `<link rel="stylesheet" href="https://www.oxfordlearnersdictionaries.com/external/styles/responsive.css?version=2.3.60" />` +
+            entryContent;
+        Common.logWarn("meaning", entryContent.slice(0, 1000));
 
-                examples = []
-                for exampleElm in exampleElms:
-                    examples.append(exampleElm.get_text().strip())
+        return entryContent;
+    }
 
-                meaning = Meaning("", examples)
-                meanings.append(meaning)
-
-        # Word Family
-        wordFamilyElm = self.doc.select_one('span.unbox[unbox="wordfamily"]')
-        if wordFamilyElm:
-            wordFamilyElms = wordFamilyElm.select("span.p")
-
-            wordFamilies = []
-            for wordFamily in wordFamilyElms:
-                wordFamilies.append(wordFamily.get_text().strip())
-
-            meaning = Meaning("", wordFamilies)
-            meaning.wordType = "Word family"
-            meanings.append(meaning)
-
-        return HtmlHelper.build_meaning(
-            self.word, self.wordType, self.phonetic, meanings
-        )
-
-    def get_dictionary_name(self) -> str:
-        return "Oxford Advanced Learner's Dictionary"
+    async #getOxfordDocument() {
+        if (!this.cardInputDto.oxfordDocument) {
+            this.cardInputDto.oxfordDocument = await Common.fetchNeutral({
+                method: "GET",
+                respType: Common.RESP_TYPE_ENUM.TEXT,
+                url: Constant.OX_EN_EN_SEARCH_URL.format(
+                    this.cardInputDto.standardizedWord.wordId
+                ),
+            });
+        }
+    }
+}

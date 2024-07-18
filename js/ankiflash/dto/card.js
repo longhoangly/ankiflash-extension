@@ -1,27 +1,20 @@
 export class Card {
-    // word in html meaning
-    word;
-    // word id for getting html
-    wordId;
-    // original word from user's input
-    oriWord;
+    wordTypes;
+    phonetics;
+    examples;
 
-    wordType;
-    phonetic;
-    example;
-
-    image;
+    images;
     sounds;
     status;
 
     meaning;
     copyright;
-    comment;
     tag;
 
-    translation;
+    cardInputDto;
+    errorMessage;
 
-    constructor(translation) {
-        this.translation = translation;
+    constructor(cardInputDto) {
+        this.cardInputDto = cardInputDto;
     }
 }

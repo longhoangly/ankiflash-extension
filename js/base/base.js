@@ -7,27 +7,158 @@ String.prototype.format = function () {
 };
 
 export class Base {
-    static #ENABLED_DEBUG_LOG = false;
-
-    static #ENABLED_DEBUG_TRACE = false;
-
-    static RESPONSE_TYPE = {
-        TEXT: "text",
-        JSON: "json",
-        RESPONSE: "response",
+    static LOG_CONFIG = {
+        DEBUG: false,
+        TRACE: false,
     };
 
-    static jsonToString(json) {
+    static RESP_TYPE_ENUM = {
+        TEXT: "TEXT",
+        JSON: "JSON",
+        RESPONSE: "RESPONSE",
+    };
+
+    static uuid() {
+        let dt = Date.now();
+        let uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+            /[xy]/g,
+            (c) => {
+                let r = (dt + Math.random() * 16) % 16 | 0;
+                dt = Math.floor(dt / 16);
+                return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+            }
+        );
+
+        return uuid;
+    }
+
+    static isNotNull(str) {
+        return str !== "" && str !== undefined && str !== null;
+    }
+
+    static isNull(str) {
+        return str === "" || str === undefined || str === null;
+    }
+
+    static isValidJson(value) {
+        if (typeof value === "object" || Array.isArray(value)) {
+            value = JSON.stringify(value);
+        }
+
+        try {
+            JSON.parse(value);
+            if (typeof value === "boolean" || value === "") {
+                return false;
+            } else {
+                return true;
+            }
+        } catch (err) {
+            Base.logDebug("Error occurred", err);
+            return false;
+        }
+    }
+
+    static randomString(
+        length,
+        includedChars = false,
+        includedSpecials = false
+    ) {
+        let characters = "123456789";
+
+        if (includedChars) {
+            characters +=
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        }
+
+        if (includedSpecials) {
+            characters += "!@#$%^&*()_+-={};':\"|.<>?";
+        }
+
+        let random = "";
+        for (let i = 0; i < length; i++) {
+            if (i === 1) {
+                characters += "0";
+            }
+
+            random += characters.charAt(
+                Math.floor(Math.random() * characters.length)
+            );
+        }
+
+        return random;
+    }
+
+    static randomInt(max) {
+        return Math.floor(Math.random() * max + 1);
+    }
+
+    static randomItems(arr, offset = 2) {
+        if (offset > arr.length) {
+            throw Error(
+                `Input array ${arr} length is shorter than the number of random element ${offset}`
+            );
+        }
+
+        let resultArr = [];
+        for (let index = 0; index < offset; index++) {
+            let randIdx = Math.floor(Math.random() * arr.length);
+
+            resultArr.push(arr[randIdx]);
+            arr.splice(randIdx, 1);
+        }
+
+        return resultArr;
+    }
+
+    static randomItem(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    static showElement(selector) {
+        $(selector).show("fast");
+    }
+
+    static hideElement(selector) {
+        $(selector).hide("fast");
+    }
+
+    static showHideElement(selector, isShown) {
+        if (isShown) {
+            Base.showElement(selector);
+        } else {
+            Base.hideElement(selector);
+        }
+    }
+
+    static setDisplayAttribute(selector, attr) {
+        $(selector).attr("style", `display: ${attr};`);
+    }
+
+    static confirmAlert(msg) {
+        if (!confirm(msg)) {
+            throw new Error("You choose Cancel option!!");
+        }
+    }
+
+    static stopAlert(msg) {
+        throw new Error(`Stoooop execution here!! Reason: ${msg}`);
+    }
+
+    static jsonToString(json, isFormatted = false) {
         try {
             if (typeof json === "object") {
-                json = JSON.stringify(json);
+                if (isFormatted) {
+                    json = JSON.stringify(json, null, "  ");
+                } else {
+                    json = JSON.stringify(json);
+                }
             } else {
                 json = JSON.stringify(JSON.parse(json));
             }
-        } catch (error) {
+        } catch (err) {
             Base.logDebug(
-                "Error while converting json object to string...please check json format...",
-                error
+                "Cannot convert JSON object to String...Please re-check json object...",
+                err
             );
         } finally {
             return json;
@@ -40,7 +171,7 @@ export class Base {
             json = JSON.parse(jsonStr);
         } catch (error) {
             Base.logDebug(
-                "Error while converting string to json object...please check json format...",
+                "Cannot convert String to JSON object...Please re-check json format...",
                 error
             );
         } finally {
@@ -48,188 +179,73 @@ export class Base {
         }
     }
 
-    static async removeStorage(keys) {
-        if (keys.length > 0) {
-            await chrome.storage.local.remove(keys, () => {
-                Base.logInfo("Removed keys", keys, "from local storage");
-            });
-        } else {
-            Base.logError("No key to remove!! Please check your input!!");
-        }
+    static distinctArray(arr) {
+        return arr
+            .filter(Boolean)
+            .filter((value, index, array) => array.indexOf(value) === index);
     }
 
-    static async getJsonStorage(keysChain) {
-        if (keysChain.length < 2) {
-            throw new Error("keysChain must have at least two keys.");
-        }
+    // Compare two arrays
+    static compareArraysIgnoreOrder(a, b) {
+        if (a.length !== b.length) return false;
+        const uniqueValues = new Set([...a, ...b]);
 
-        let firstKey = keysChain.shift();
-        let json = await Base.getStorage(firstKey);
+        for (const v of uniqueValues) {
+            const aCount = a.filter((e) => e === v).length;
+            const bCount = b.filter((e) => e === v).length;
 
-        let value = await Base.#getJsonValue(keysChain, json);
-        Base.logInfo("Return storage JSON...", value);
-
-        return value;
-    }
-
-    static async #getJsonValue(keysChain, json) {
-        Base.logDebug("Getting value from", json, "by", keysChain);
-
-        if (json) {
-            if (keysChain.length === 1) {
-                return json[keysChain.shift()];
-            } else {
-                let firstKey = keysChain.shift();
-                return Base.#getJsonValue(keysChain, json[firstKey]);
-            }
-        } else {
-            return undefined;
-        }
-    }
-
-    static async setJsonStorage(keysChain, value) {
-        if (keysChain.length < 2) {
-            throw new Error("keysChain must have at least two keys.");
+            if (aCount !== bCount) return false;
         }
 
-        let firstKey = keysChain.shift();
-        let json = await Base.getStorage(firstKey);
-
-        let storedJson = await Base.#setJsonValue(keysChain, value, json);
-        Base.logInfo("Saving storage JSON...", storedJson);
-
-        await Base.setStorage(firstKey, storedJson);
-        return storedJson;
-    }
-
-    static async #setJsonValue(keysChain, value, json) {
-        Base.logInfo("Setting", value, "to", json, "by", keysChain);
-
-        if (json) {
-            if (keysChain.length === 1) {
-                json[keysChain.shift()] = value;
-                return json;
-            } else {
-                let firstKey = keysChain.shift();
-                let subJson = await Base.#setJsonValue(
-                    keysChain,
-                    value,
-                    json[firstKey]
-                );
-                json[firstKey] = subJson;
-                return json;
-            }
-        } else {
-            json = {};
-            json[keysChain.shift()] = value;
-            return json;
-        }
-    }
-
-    static async getStorage(key) {
-        let data = await Base.getStorages([key]);
-        Base.logInfo("Return storage...", key, data[key]);
-        return data[key];
-    }
-
-    static async getStorages(keys) {
-        let promise = await new Promise((resolve, reject) => {
-            // keys = null to get the whole storage
-            chrome.storage.local.get(keys, (data) => {
-                if (chrome.runtime.lastError) {
-                    return reject(chrome.runtime.lastError);
-                }
-                resolve(data);
-            });
-        });
-
-        return promise;
-    }
-
-    static async setStorage(key, value) {
-        let json = {};
-        json[key] = value;
-        Base.logInfo("Saving storage...", key, value);
-
-        let promise = await new Promise((resolve, reject) => {
-            chrome.storage.local.set(json, () => {
-                if (chrome.runtime.lastError) {
-                    return reject(chrome.runtime.lastError);
-                }
-                resolve(true);
-            });
-        });
-
-        return promise;
+        return true;
     }
 
     static logSuccess(...args) {
-        console.log(
-            Base.#decorLogMsg(args),
-            "color: lightgreen",
-            "[Logger]",
-            ...args
-        );
+        console.log(Base.#decorLogMsg(args), "color: LightGreen", ...args);
 
-        if (Base.#ENABLED_DEBUG_TRACE) {
+        if (Base.LOG_CONFIG.TRACE) {
             console.trace();
         }
     }
 
-    static logWarning(...args) {
-        console.log(
-            Base.#decorLogMsg(args),
-            "color: darkorange",
-            "[Logger]",
-            ...args
-        );
+    static logWarn(...args) {
+        console.log(Base.#decorLogMsg(args), "color: DarkOrange", ...args);
 
-        if (Base.#ENABLED_DEBUG_TRACE) {
+        if (Base.LOG_CONFIG.TRACE) {
             console.trace();
         }
     }
 
     static logInfo(...args) {
-        console.log(
-            Base.#decorLogMsg(args),
-            "color: darkgray",
-            "[Logger]",
-            ...args
-        );
+        console.log(Base.#decorLogMsg(args), "color: DarkGray", ...args);
 
-        if (Base.#ENABLED_DEBUG_TRACE) {
+        if (Base.LOG_CONFIG.TRACE) {
             console.trace();
         }
     }
 
     static logError(...args) {
-        console.log(Base.#decorLogMsg(args), "color: red", "[Logger]", ...args);
+        console.log(Base.#decorLogMsg(args), "color: Red", ...args);
 
-        if (Base.#ENABLED_DEBUG_TRACE) {
+        if (Base.LOG_CONFIG.TRACE) {
             console.trace();
         }
     }
 
     static logDebug(...args) {
-        if (Base.#ENABLED_DEBUG_LOG) {
-            console.log(
-                Base.#decorLogMsg(args),
-                "color: red",
-                "[Logger]",
-                ...args
-            );
+        if (Base.LOG_CONFIG.DEBUG) {
+            console.log(Base.#decorLogMsg(args), "color: Red", ...args);
         }
 
-        if (Base.#ENABLED_DEBUG_TRACE) {
+        if (Base.LOG_CONFIG.TRACE) {
             console.trace();
         }
     }
 
     static #decorLogMsg(args) {
-        let msgConfig = "%c%s ";
-
-        args.forEach((argument) => {
-            const type = typeof argument;
+        let msgConfig = "%c ";
+        args.forEach((arg) => {
+            const type = typeof arg;
             switch (type) {
                 case "bigint":
                     msgConfig += "%o ";
@@ -257,30 +273,484 @@ export class Base {
         return msgConfig;
     }
 
-    // Only can call after options loaded
-    static async fetchWithRetries(
-        url,
-        headers,
-        method = "GET",
-        payload = null,
-        resType = Base.RESPONSE_TYPE.JSON
-    ) {
-        let retryTimes = await Base.getStorage("retryTimes");
-        let retryInterval = await Base.getStorage("retryInterval");
-        let retryCodes = (await Base.getStorage("retryCodes"))
-            .split(",")
-            .filter(Boolean);
+    static getWeekNo(offset) {
+        let currentdate = new Date();
+        var oneJan = new Date(currentdate.getFullYear(), 0, 1);
+
+        var numberOfDays =
+            (currentdate.getTime() - oneJan.getTime()) / (24 * 60 * 60 * 1000);
+
+        var weekNo =
+            Math.ceil((currentdate.getDay() + 1 + numberOfDays) / 7) + offset;
+
+        Base.logWarn(
+            `The week number of the date (${currentdate}) is ${currentdate.getFullYear()}-W${String(
+                weekNo
+            ).padStart(2, "0")}.`
+        );
+
+        return `${currentdate.getFullYear()}-W${String(weekNo).padStart(
+            2,
+            "0"
+        )}`;
+    }
+
+    static objToUrlParams(obj) {
+        const formData = new URLSearchParams();
+
+        for (const key in obj) {
+            if (Array.isArray(obj[key]) || Base.isValidJson(obj[key])) {
+                formData.append(key, Base.jsonToString(obj[key]));
+            } else {
+                formData.append(key, obj[key]);
+            }
+        }
+
+        return formData.toString();
+    }
+
+    static objToUrlParamsV2(obj) {
+        var str = "";
+
+        for (const key in obj) {
+            if (str != "") {
+                str += "&";
+            }
+            str += key + "=" + encodeURIComponent(obj[key]);
+        }
+
+        return str;
+    }
+
+    static getDaysArray(start, end) {
+        // From: "2021-06-09" to "2021-06-10"
+        for (
+            var arr = [], dt = new Date(start);
+            dt <= end;
+            dt.setDate(dt.getDate() + 1)
+        ) {
+            arr.push(new Date(dt));
+        }
+        return arr;
+    }
+
+    static getJsonDate(offsetDate = 0, separator = "-") {
+        let tmpDate = new Date();
+        Base.logDebug("tmpDate.getTime()", tmpDate.getTime());
+
+        let date = new Date(tmpDate.getTime());
+        let localTimezone = (-1 * date.getTimezoneOffset()) / 60;
+
+        // Get current date by Singapore timezone
+        let timezone = +8;
+
+        date.setDate(date.getDate() + offsetDate);
+        date.setHours(date.getHours() - localTimezone);
+        date.setHours(date.getHours() + timezone);
+        Base.logDebug("date.getTime()", date.getTime());
+
+        let dateString = new Date(
+            date.getTime() - date.getTimezoneOffset() * 60000
+        )
+            .toJSON()
+            .slice(0, 10);
+
+        return dateString.replaceAll("-", separator);
+    }
+
+    static requiredField(varValue, varName) {
+        Base.logDebug(varValue, "... is value of required field ...", varName);
+
+        if (varValue !== false && !varValue) {
+            throw new Error(
+                `{${varName}} is required field, but actual value is {${varValue}}`
+            );
+        }
+    }
+
+    static setIntervalNoDelay(func, interval, ...args) {
+        func(...args);
+        return setInterval(func, interval, ...args);
+    }
+
+    static calc(str) {
+        str = str.replaceAll(" ", "");
+        const blocks = str.split(/[+-]/i);
+        let mainOperators = [...str.matchAll(/[+-]/g)].map((r) => r[0]);
+
+        let blockValues = [];
+        for (const block of blocks) {
+            const numbers = block.split(/[/*]/i);
+            let subOperators = [...block.matchAll(/[/*]/g)].map((r) => r[0]);
+            blockValues.push(Base.#calcArray(numbers, subOperators));
+        }
+
+        return blockValues.length === 1
+            ? blockValues[0]
+            : Base.#calcArray(blockValues, mainOperators);
+    }
+
+    static #calcArray(numbers, operators) {
+        Base.logDebug("numbers", numbers, "operators", operators);
+
+        if (operators.length < 1) {
+            throw new Error("Should have at least 1 operator");
+        }
+
+        if (numbers.length < 2) {
+            throw new Error("Should have at least 2 numbers");
+        }
+
+        if (operators.length !== numbers.length - 1) {
+            throw new Error(
+                "operators array should be less than numbers array ONE element"
+            );
+        }
+
+        let combinedVal = Base.#calcNum(
+            numbers.shift(),
+            operators.shift(),
+            numbers.shift()
+        );
+        numbers.unshift(combinedVal);
+
+        return numbers.length === 1
+            ? combinedVal
+            : Base.#calcArray(numbers, operators);
+    }
+
+    static #calcNum(num1, operator, num2) {
+        Base.logDebug("num1", num1, "operator", operator, "num2", num2);
+
+        switch (operator) {
+            case "+":
+                return num1 + num2;
+            case "-":
+                return num1 - num2;
+            case "/":
+                return num1 / num2;
+            case "*":
+                return num1 * num2;
+            default:
+                Base.logError("Operation not found");
+                return undefined;
+        }
+    }
+
+    static toReadableTime(timeInSecond) {
+        timeInSecond = Math.floor(timeInSecond);
+
+        let seconds = timeInSecond % 60;
+
+        let timeInMinute = (timeInSecond - seconds) / 60;
+        let minutes = timeInMinute % 60;
+
+        let hours = (timeInMinute - minutes) / 60;
+
+        return `${hours.toString().padStart(2, "0")}:${minutes
+            .toString()
+            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+    }
+
+    static getMedian(arr) {
+        if (arr.length === 0) {
+            return undefined;
+        }
+
+        arr.sort((a, b) => a - b);
+        const middleIndex = Math.floor(arr.length / 2);
+
+        if (arr.length % 2 === 0) {
+            return (arr[middleIndex - 1] + arr[middleIndex]) / 2;
+        } else {
+            return arr[middleIndex];
+        }
+    }
+
+    static async setElementColor(selector, colorCode) {
+        // $(selector).css("cssText", `color: ${colorCode} !important`);
+        // $(selector).css({"font-style": "italic", "font-weight": "bold","text-decoration": "underline"});
+
+        let cssObj = { color: colorCode };
+        $(selector).css(cssObj);
+    }
+
+    static async disableElement(selector) {
+        $(selector).prop("disabled", true);
+    }
+
+    static async enableElement(selector) {
+        $(selector).prop("disabled", false);
+    }
+
+    static async isNumber(value) {
+        if (value == null || value == undefined) {
+            return false;
+        }
+
+        value = String(value);
+        let matches = value.match(/^\d+(\.\d+){0,1}$/g);
+        return matches !== null && matches.length > 0;
+    }
+
+    static async removeStorage(keys) {
+        if (keys.length > 0) {
+            await chrome.storage.local.remove(keys, (data) => {
+                Base.logInfo("Removed keys", keys, "from local storage", data);
+            });
+        } else {
+            Base.logError("No key to remove!! Please check your input!!");
+        }
+    }
+
+    static async getStorages(keys) {
+        let promise = await new Promise((resolve, reject) => {
+            // keys = null to get the whole storage
+            chrome.storage.local.get(keys, (data) => {
+                if (chrome.runtime.lastError) {
+                    return reject(chrome.runtime.lastError);
+                }
+                resolve(data);
+            });
+        });
+
+        return promise;
+    }
+
+    static async getStorage(key) {
+        let data = await Base.getStorages([key]);
+        Base.logDebug("Return storage...", key, data[key]);
+        return data[key];
+    }
+
+    static async setStorage(key, value) {
+        let json = {};
+        json[key] = value;
+        Base.logDebug("Saving storage...", key, value);
+
+        let promise = await new Promise((resolve, reject) => {
+            chrome.storage.local.set(json, () => {
+                if (chrome.runtime.lastError) {
+                    return reject(chrome.runtime.lastError);
+                }
+                resolve(true);
+            });
+        });
+
+        return promise;
+    }
+
+    static async getJsonStorage(storageKey, jsonKeys = []) {
+        if (jsonKeys.length === 0) {
+            throw new Error("Please use getStorage method instead.");
+        }
+
+        let json = await Base.getStorage(storageKey);
+        let value = await Base.#getJsonFieldValue(jsonKeys, json);
+
+        Base.logDebug("Return storage JSON value...", value);
+        return value;
+    }
+
+    static async #getJsonFieldValue(keys, json) {
+        Base.logDebug("Getting field value", keys, "from", json);
+
+        if (Base.isValidJson(json)) {
+            if (keys.length === 1) {
+                return json[keys.shift()];
+            } else {
+                return Base.#getJsonFieldValue(keys, json[keys.shift()]);
+            }
+        } else {
+            return undefined;
+        }
+    }
+
+    static async setJsonStorage(storageKey, jsonKeys, value) {
+        if (jsonKeys.length === 0) {
+            throw new Error("Please use setStorage method instead.");
+        }
+
+        let json = await Base.getStorage(storageKey);
+        let storedJson = await Base.#setJsonFieldValue(jsonKeys, value, json);
+        await Base.setStorage(firstKey, storedJson);
+
+        Base.logDebug("Saving storage JSON value...", storedJson);
+        return storedJson;
+    }
+
+    static async #setJsonFieldValue(keys, value, json) {
+        Base.logDebug("Setting", value, "to", json, "by", keys);
+
+        if (json) {
+            if (keys.length === 1) {
+                json[keys.shift()] = value;
+                return json;
+            } else {
+                let firstKey = keys.shift();
+                let subJson = await Base.#setJsonFieldValue(
+                    keys,
+                    value,
+                    json[firstKey]
+                );
+                json[firstKey] = subJson;
+                return json;
+            }
+        } else {
+            json = {};
+            json[keys.shift()] = value;
+            return json;
+        }
+    }
+
+    static async fetchWithTimeout(request) {
+        let requestTimeout = await Base.getJsonStorage("ankiFlashOptions", [
+            "requestTimeout",
+        ]);
+
+        if (!request.timeout) {
+            request.timeout = requestTimeout;
+        }
+        const { timeout = request.timeout * 1000 } = request.options;
+
+        const abortController = new AbortController();
+        const id = setTimeout(() => abortController.abort(), timeout);
+
+        const response = await fetch(request.url, {
+            ...request.options,
+            signal: abortController.signal,
+        });
+
+        clearTimeout(id);
+        return response;
+    }
+
+    static async fetchNeutral(request) {
+        if (request.payload !== null) {
+            if (Base.isValidJson(request.payload)) {
+                request.payload = Base.jsonToString(request.payload);
+            }
+
+            if (request.payload instanceof FormData) {
+                let formData = {};
+                for (const pair of request.payload.entries()) {
+                    formData[pair[0]] = pair[1];
+                }
+            }
+        }
+
+        let fetchOptions = {
+            method: request.method,
+            headers: new Headers(request.headers),
+            body: request.payload,
+            redirect: "follow",
+            credentials: "include",
+            mode: "cors",
+            referrer: request.url,
+            referrerPolicy: "strict-origin-when-cross-origin",
+        };
+
+        let response;
+        let printedResponse;
+
+        let printedPayload = Base.isValidJson(request.payload)
+            ? JSON.parse(request.payload)
+            : request.payload;
+
+        try {
+            response = await Base.fetchWithTimeout({
+                url: request.url,
+                options: fetchOptions,
+            });
+
+            try {
+                if (request.respType === Base.RESP_TYPE_ENUM.RESPONSE) {
+                    printedResponse = response;
+                } else if (request.respType === Base.RESP_TYPE_ENUM.TEXT) {
+                    printedResponse = await response.text();
+                } else {
+                    printedResponse = await response.clone().json();
+                }
+
+                if (
+                    response.ok ||
+                    response.status == 200 ||
+                    printedResponse.success
+                ) {
+                    Base.logSuccess(
+                        request.method,
+                        "URL",
+                        request.url,
+                        "HEADERS",
+                        request.headers,
+                        "PAYLOAD",
+                        printedPayload,
+                        "RESPONSE",
+                        printedResponse.slice(0, 1000)
+                    );
+                } else {
+                    Base.logError(
+                        request.method,
+                        "URL",
+                        request.url,
+                        "HEADERS",
+                        request.headers,
+                        "PAYLOAD",
+                        printedPayload,
+                        "RESPONSE",
+                        printedResponse
+                    );
+                }
+            } catch (error) {
+                printedResponse = await response.text();
+                Base.logError(
+                    request.method,
+                    "URL",
+                    request.url,
+                    "HEADERS",
+                    request.headers,
+                    "PAYLOAD",
+                    printedPayload,
+                    "RESPONSE",
+                    printedResponse,
+                    "ERROR",
+                    error
+                );
+            }
+        } catch (error) {
+            Base.logError(
+                request.method,
+                "URL",
+                request.url,
+                "HEADERS",
+                request.headers,
+                "PAYLOAD",
+                printedPayload,
+                "RESPONSE",
+                printedResponse,
+                "ERROR",
+                error
+            );
+        }
+
+        return printedResponse;
+    }
+
+    static async fetchRetries(request) {
+        let retryTimes = await Base.getJsonStorage("letoOptions", [
+            "retryTimes",
+        ]);
+        let retryInterval = await Base.getJsonStorage("letoOptions", [
+            "retryInterval",
+        ]);
+        let retryCodes = await Base.getJsonStorage("letoOptions", [
+            "retryCodes",
+        ]);
 
         let json;
         let requestCount = 0;
         do {
-            json = await Base.fetchNeutral(
-                url,
-                headers,
-                method,
-                payload,
-                resType
-            );
+            json = await Base.fetchNeutral(request);
 
             requestCount++;
             if (json.error === undefined || requestCount === retryTimes) {
@@ -295,137 +765,21 @@ export class Base {
         return json;
     }
 
-    static async fetchNeutral(
-        fetchUrl,
-        headers,
-        method = "GET",
-        payload = null,
-        resType = Base.RESPONSE_TYPE.JSON
-    ) {
-        if (payload !== null) {
-            if (Base.isValidJson(payload)) {
-                payload = Base.jsonToString(payload);
-            }
+    static async fetchJsonContent(jsonPath) {
+        Base.logInfo("JS navitve fetching JSON file.", jsonPath);
 
-            if (payload instanceof FormData) {
-                let formData = {};
-                for (const pair of payload.entries()) {
-                    formData[pair[0]] = pair[1];
-                }
+        let response = await fetch(jsonPath);
+        let json = await response.json();
+        Base.logSuccess("Json", json);
 
-                Base.logDebug(
-                    method,
-                    "FetchURL",
-                    fetchUrl,
-                    "Headers",
-                    headers,
-                    "Payload",
-                    formData
-                );
-            }
-        }
-
-        let reqOptions = {
-            method: method,
-            headers: new Headers(headers),
-            body: payload,
-            redirect: "follow",
-            credentials: "include",
-            mode: "cors",
-            referrer: fetchUrl,
-            referrerPolicy: "strict-origin-when-cross-origin",
-        };
-
-        let response;
-        let finalResponse;
-
-        try {
-            response = await Base.fetchWithTimeout(fetchUrl, reqOptions);
-            try {
-                if (resType === Base.RESPONSE_TYPE.TEXT) {
-                    finalResponse = await response.text();
-                } else if (resType === Base.RESPONSE_TYPE.JSON) {
-                    finalResponse = await response.clone().json();
-                } else if (resType === Base.RESPONSE_TYPE.RESPONSE) {
-                    finalResponse = response;
-                }
-
-                if (!response.ok || response.status !== 200) {
-                    Base.logError(
-                        method,
-                        "FetchURL",
-                        fetchUrl,
-                        "Payload",
-                        payload,
-                        "Response",
-                        response
-                    );
-                } else {
-                    Base.logSuccess(
-                        method,
-                        "FetchURL",
-                        fetchUrl,
-                        "Payload",
-                        payload,
-                        "Response",
-                        finalResponse
-                    );
-                }
-            } catch (error) {
-                finalResponse = await response.text();
-                Base.logError(
-                    method,
-                    "FetchURL",
-                    fetchUrl,
-                    "Payload",
-                    payload,
-                    "Response",
-                    response,
-                    "Error",
-                    error
-                );
-            }
-        } catch (error) {
-            Base.logError(
-                method,
-                "FetchURL",
-                fetchUrl,
-                "Payload",
-                payload,
-                "Response",
-                response,
-                "Error",
-                error
-            );
-        }
-
-        return finalResponse;
+        return json;
     }
 
-    static async fetchWithTimeout(url, options = {}, reqTimeout = 30) {
-        let storageTimeout = await Base.getStorage("requestTimeout");
-        if (storageTimeout) {
-            reqTimeout = storageTimeout;
-        }
-        const { timeout = reqTimeout * 1000 } = options;
+    static async getJsonContent(jsonPath) {
+        Base.logInfo("JQuery getting JSON file.", jsonPath);
 
-        const abortController = new AbortController();
-        const id = setTimeout(() => abortController.abort(), timeout);
-
-        const response = await fetch(url, {
-            ...options,
-            signal: abortController.signal,
-        });
-
-        clearTimeout(id);
-        return response;
-    }
-
-    static async jqueryGetJson(jsonUrl) {
-        Base.logInfo("JQuery getting JSON file", jsonUrl);
-
-        let json = await $.getJSON(jsonUrl, (data) => {
-            Base.logInfo("JSON content", data);
+        let json = await $.getJSON(jsonPath, (data) => {
+            Base.logInfo("Json", data);
         }).fail((err) => {
             Base.logError("an error has occurred.", err);
         });
@@ -433,102 +787,209 @@ export class Base {
         return json;
     }
 
-    static async jqueryGetContent(url) {
-        Base.logInfo("JQuery getting HTML content", url);
+    static async getUrlContent(url) {
+        Base.logInfo("JQuery getting HTML content.", url);
 
-        let content = await $.get(url, (data) => {
-            Base.logInfo("Content", data);
+        let html = await $.get(url, (data) => {
+            Base.logDebug("Html", data);
         }).fail((err) => {
-            Base.logError("an error has occurred", err);
+            Base.logError("an error has occurred.", err);
         });
 
-        return content;
+        return html;
     }
 
-    static async simpleFetchJson(jsonUrl) {
-        Base.logInfo("Javascript navitve fetching JSON file", jsonUrl);
-        let response = await fetch(jsonUrl);
-
-        let json = await response.json();
-        Base.logSuccess("Json", json);
-
-        return json;
-    }
-
-    static getWeekNo(offset) {
-        let currentdate = new Date();
-        let oneJan = new Date(currentdate.getFullYear(), 0, 1);
-
-        let numberOfDays =
-            (currentdate.getTime() - oneJan.getTime()) / (24 * 60 * 60 * 1000);
-        let weekNo =
-            Math.ceil((currentdate.getDay() + 1 + numberOfDays) / 7) + offset;
-
-        let returnedWk = `${currentdate.getFullYear()}-W${String(
-            weekNo
-        ).padStart(2, "0")}`;
-
-        Base.logWarning(
-            `The week number of the date (${currentdate}) is ${returnedWk}.`
-        );
-
-        return;
-    }
-
-    static async getCookie(url, cookieName) {
-        let cookie = await chrome.cookies.get({
-            url: url,
-            name: cookieName,
-        });
+    static async getCookie(cookieDetails) {
+        let cookie = await chrome.cookies.get(cookieDetails);
 
         if (cookie !== null && cookie != undefined && cookie.value) {
-            Base.logInfo("Found cookie", url, cookie.value);
+            Base.logDebug("Found cookie", cookieDetails, cookie.value);
             return cookie.value;
         }
 
-        Base.logWarning("Cookie not found!!", url);
+        Base.logDebug("Cookie not found!!", cookieDetails);
     }
 
-    static isValidJson(value) {
-        if (typeof value === "object" || Array.isArray(value)) {
-            value = JSON.stringify(value);
-        }
+    static async getCookies(cookieDetails, filters = {}) {
+        let cookies = await chrome.cookies.getAll(cookieDetails);
 
-        try {
-            JSON.parse(value);
-            if (typeof value === "boolean" || value === "") {
-                return false;
-            } else {
-                return true;
-            }
-        } catch (err) {
-            return false;
-        }
-    }
+        if (cookies !== null && cookies != undefined) {
+            Base.logDebug("Found raw cookies", cookieDetails, filters, cookies);
 
-    static async isNumber(value) {
-        let matches = value.match(/^\d+$/g);
-        return matches !== null && matches.length > 0;
-    }
+            cookies = cookies.filter((c) => {
+                let rt = true;
 
-    static async openNewTab(url) {
-        let hostname = new URL(url).hostname;
+                for (const key of Object.keys(filters)) {
+                    rt = rt && filters[key] && filters[key].includes(c[key]); // filters.domain
+                }
 
-        let tabs = await chrome.tabs.query({ url: `*://${hostname}/*` });
-        Base.logInfo("tabs", tabs);
-
-        if (tabs.length === 0) {
-            Base.logInfo("Opening URL", url);
-
-            let activeTab = await Base.getActiveTab();
-            await chrome.tabs.create({
-                url: url,
-                active: false,
-                index: parseInt(activeTab.index) + 1,
+                return rt;
             });
-        } else {
-            Base.logInfo("URL already openned!", url);
+
+            Base.logInfo(
+                "Found filtered cookies",
+                cookieDetails,
+                filters,
+                cookies
+            );
+            return cookies;
         }
+
+        Base.logWarn("Cookie not found!!", cookieDetails);
+    }
+
+    static async removeCookies(cookieDetails, filters = {}) {
+        let cookies = await Base.getCookies(cookieDetails, filters);
+        Base.logInfo(
+            "Going to remove cookies",
+            cookieDetails,
+            filters,
+            cookies
+        );
+
+        let removeResults = [];
+        for (const cookie of cookies) {
+            let details = {
+                url: cookieDetails.url || filters.domain, // in case of partitioned cookie, cookieDetails will not have url, then use filter.domain
+                name: cookie.name,
+            };
+
+            if (cookie.partitionKey) {
+                details.partitionKey = cookie.partitionKey;
+            }
+
+            Base.logInfo("Removing cookie", cookieDetails, filters, cookie);
+            removeResults.push(await chrome.cookies.remove(details));
+        }
+
+        return removeResults;
+    }
+
+    static async getCookieString(cookieDetails, filters = {}) {
+        let cookies = await Base.getCookies(cookieDetails, filters);
+
+        let cookieString = cookies
+            .map((c) => `${c.name}=${c.value}`)
+            .join("; ");
+
+        return cookieString;
+    }
+
+    static async updateCookieString(cookieKey, setCookies) {
+        let cookieString = await Base.getStorage(cookieKey);
+
+        if (setCookies.length > 0) {
+            let storageCookies = cookieString
+                .split(";")
+                .map((c) => c.trim())
+                .map((c) => {
+                    return { name: c.split("=")[0], value: c.split("=")[1] };
+                });
+
+            // append new cookies which were not in storage before
+            for (const setCookie of setCookies.filter(
+                (sc) => !storageCookies.map((c) => c.name).includes(sc.name)
+            )) {
+                storageCookies.push({
+                    name: setCookie.name,
+                    value: setCookie.value,
+                });
+            }
+
+            // update cookies already in storage string
+            storageCookies.forEach((storageCookie) => {
+                let [foundCookie] = setCookies.filter(
+                    (c) => c.name === storageCookie.name
+                );
+
+                if (foundCookie) {
+                    storageCookie.value = foundCookie.value;
+                }
+            });
+
+            cookieString = storageCookies
+                .map((c) => `${c.name}=${c.value}`)
+                .join("; ");
+
+            Base.logWarn(`Updating... ${cookieKey}=`, cookieString);
+            await Base.setStorage(cookieKey, cookieString);
+        }
+
+        return cookieString;
+    }
+
+    static async openThenCloseLoadedTab(url, isActive = false) {
+        Base.logInfo("Opening URL", url);
+        let activeTab = await Base.getActiveTab();
+
+        let createdTab = await Base.#createBrowserTab({
+            url: url,
+            active: isActive,
+            index: parseInt(activeTab.index) + 1,
+        });
+
+        await Base.setStorage(createdTab.id, false);
+        chrome.tabs.onUpdated.addListener(async (tabId, info) => {
+            if (createdTab.id === tabId && info.status === "complete") {
+                await Base.setStorage(createdTab.id, true);
+                await chrome.tabs.remove(createdTab.id);
+            }
+        });
+
+        await Base.waitUntil(
+            async (tabId) => {
+                return { isStopped: await Base.getStorage(String(tabId)) };
+            },
+            500,
+            30000,
+            createdTab.id
+        );
+    }
+
+    static async openNewTab(url, isActive = false) {
+        Base.logInfo("Opening URL", url);
+        let activeTab = await Base.getActiveTab();
+
+        await Base.#createBrowserTab({
+            url: url,
+            active: isActive,
+            index: parseInt(activeTab.index) + 1,
+        });
+    }
+
+    static async #createBrowserTab(createProperties) {
+        let promise = await new Promise((resolve, reject) => {
+            chrome.tabs.create(createProperties, (createdTab) => {
+                if (chrome.runtime.lastError) {
+                    return reject(chrome.runtime.lastError);
+                }
+                resolve(createdTab);
+            });
+        });
+
+        return promise;
+    }
+
+    static async getActiveTab() {
+        let [activeTab] = await Base.#queryBrowserTabs({
+            active: true,
+            currentWindow: true,
+        });
+
+        return activeTab;
+    }
+
+    static async #queryBrowserTabs(queryInfo) {
+        let promise = await new Promise((resolve, reject) => {
+            chrome.tabs.query(queryInfo, (tabs) => {
+                if (chrome.runtime.lastError) {
+                    return reject(chrome.runtime.lastError);
+                }
+                resolve(tabs);
+            });
+        });
+
+        return promise;
     }
 
     static async flattenJSON(obj = {}, res = {}, extraKey = "") {
@@ -549,6 +1010,19 @@ export class Base {
     }
 
     static async compareTwoJsonObjects(jsonA, jsonB) {
+        // objects are equals
+        // const y = { a: "1", b: "2" };
+        // const x = { b: "2", a: "1" };
+
+        // let a = await Common.flattenJSON(x);
+        // let b = await Common.flattenJSON(y);
+
+        // Common.logError("a", a, "b", b);
+        // Common.logError("a === b", a === b); // false
+
+        // let result = await Common.compareTwoJsonObjects(x, y);
+        // Common.logError("result", result); // true
+
         let flattenJsonA = await Base.flattenJSON(jsonA);
         const sortObjectA = await Base.sortObject(flattenJsonA);
 
@@ -593,20 +1067,7 @@ export class Base {
         return decodeURI(atob(str));
     }
 
-    static convertObjToUrlParams(obj) {
-        const formData = new URLSearchParams();
-        for (const key in obj) {
-            if (Array.isArray(obj[key]) || Base.isValidJson(obj[key])) {
-                formData.append(key, Base.jsonToString(obj[key]));
-            } else {
-                formData.append(key, obj[key]);
-            }
-        }
-
-        return formData.toString();
-    }
-
-    static copyTextToClipboard(selector) {
+    static async copyTextToClipboard(selector) {
         let copyText = document.querySelector(selector);
 
         copyText.select();
@@ -616,16 +1077,10 @@ export class Base {
         navigator.clipboard.writeText(copyText.value);
     }
 
-    static distinctArray(arr) {
-        return arr
-            .filter(Boolean)
-            .filter((value, index, array) => array.indexOf(value) === index);
-    }
-
-    static async sendMessageToTab(tabId, msgObj) {
+    static async extSendMessageToBrowserTab(tabId, msgObj) {
         let promise = await new Promise((resolve, reject) => {
             chrome.tabs.sendMessage(tabId, msgObj, (response) => {
-                Base.logWarning("response from tab", response);
+                Base.logWarn("response from browser tab", response);
 
                 if (chrome.runtime.lastError) {
                     return reject(chrome.runtime.lastError);
@@ -637,10 +1092,10 @@ export class Base {
         return promise;
     }
 
-    static async sendMessageToBackground(msgObj) {
+    static async tabSendMessageToBackground(msgObj) {
         let promise = await new Promise((resolve, reject) => {
             chrome.runtime.sendMessage(msgObj, (response) => {
-                Base.logWarning("response from background", response);
+                Base.logWarn("response from background", response);
 
                 if (chrome.runtime.lastError) {
                     return reject(chrome.runtime.lastError);
@@ -650,88 +1105,6 @@ export class Base {
         });
 
         return promise;
-    }
-
-    static confirmAlert(msg) {
-        if (!confirm(msg)) {
-            throw new Error("You choose Cancel option!");
-        }
-    }
-
-    static stopAlert(msg) {
-        throw new Error(`Stoooop execution here!! Reason: ${msg}`);
-    }
-
-    static randomString(
-        length,
-        includedChars = false,
-        includedSpecials = false
-    ) {
-        let random = "";
-
-        for (let i = 0; i < length; i++) {
-            let characters = i === 0 ? "123456789" : "0123456789";
-
-            if (includedChars) {
-                characters +=
-                    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            }
-
-            if (includedSpecials) {
-                characters += "!@#$%^&*()_+-={};':\"|.<>?";
-            }
-
-            random += characters.charAt(
-                Math.floor(Math.random() * characters.length)
-            );
-        }
-
-        return random;
-    }
-
-    static randomInt(max) {
-        return Math.floor(Math.random() * max + 1);
-    }
-
-    // Compare two arrays
-    static equalsIgnoreOrder(a, b) {
-        if (a.length !== b.length) return false;
-        const uniqueValues = new Set([...a, ...b]);
-
-        for (const v of uniqueValues) {
-            const aCount = a.filter((e) => e === v).length;
-            const bCount = b.filter((e) => e === v).length;
-
-            if (aCount !== bCount) return false;
-        }
-
-        return true;
-    }
-
-    static uuid() {
-        let dt = new Date().getTime();
-        let uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-            /[xy]/g,
-            (c) => {
-                let r = (dt + Math.random() * 16) % 16 | 0;
-                dt = Math.floor(dt / 16);
-                return (c == "x" ? r : (r & 0x3) | 0x8).toString(16);
-            }
-        );
-
-        return uuid;
-    }
-
-    static randomElement(arr) {
-        return arr[Math.floor(Math.random() * arr.length)];
-    }
-
-    static requiredField(fieldValue) {
-        if (!fieldValue) {
-            throw new Error(
-                `Expected required field, but actual value is '${fieldValue}'`
-            );
-        }
     }
 
     static async delayTime(ms) {
@@ -741,76 +1114,126 @@ export class Base {
         });
     }
 
-    static async getActiveTab() {
-        let [activeTab] = await chrome.tabs.query({
-            active: true,
-            currentWindow: true,
-        });
-
-        return activeTab;
-    }
-
-    static getDaysArray(start, end) {
-        // From: "2021-06-09" to "2021-06-10"
-        for (
-            var arr = [], dt = new Date(start);
-            dt <= end;
-            dt.setDate(dt.getDate() + 1)
-        ) {
-            arr.push(new Date(dt));
+    static async waitUntil(
+        stopConditionFunc,
+        retryInterval = 500,
+        timeoutMilis = 30000,
+        ...args
+    ) {
+        if (retryInterval === 0) {
+            retryInterval = await Base.getJsonStorage("letoOptions", [
+                "retryInterval",
+            ]);
         }
-        return arr;
-    }
 
-    static getCurrentDate() {
-        let tmpDate = new Date();
-        console.debug("tmpDate.getTime()", tmpDate.getTime());
+        let result;
+        let isStopped = false;
 
-        let date = new Date(tmpDate.getTime());
-        let localTimezone = (-1 * date.getTimezoneOffset()) / 60;
+        let maxChecks = parseInt(timeoutMilis / retryInterval);
+        for (let index = 0; index < maxChecks; index++) {
+            result = await stopConditionFunc(...args);
+            Base.logWarn(
+                "waitUntil",
+                stopConditionFunc.name,
+                "params",
+                args,
+                "RETURNED",
+                result,
+                "...CHECKING !!!"
+            );
+            isStopped = result.isStopped;
 
-        // Get current date by Singapore timezone
-        let timezone = +8;
-        date.setHours(date.getHours() - localTimezone);
-        date.setHours(date.getHours() + timezone);
-        console.debug("date.getTime()", date.getTime());
-
-        return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-            .toJSON()
-            .slice(0, 10);
-    }
-
-    static async waitUntil(condition, maxChecks = 60) {
-        let retryInterval = await Base.getStorage("retryInterval");
-        let intervalCount = 0;
-
-        let isConditionMatched = false;
-        let intervalId = Base.setIntervalNoDelay(async () => {
-            intervalCount++;
-            Base.logWarning(`Waiting until ${condition.name}...returns TRUE!!`);
-
-            isConditionMatched = await condition();
-            if (isConditionMatched) {
-                Base.logWarning(
-                    `> Condition ${condition.name} returned ${isConditionMatched}... STOP waiting!!`
+            if (isStopped) {
+                Base.logWarn(
+                    "waitUntil",
+                    stopConditionFunc.name,
+                    "params",
+                    args,
+                    "RETURNED",
+                    result,
+                    "...STOPPED !!!"
                 );
-                clearInterval(intervalId);
-            } else if (intervalCount > maxChecks) {
-                Base.logError(
-                    `> Condition ${condition.name} is STILL ${isConditionMatched}!! Timeout reached!!`
-                );
-                clearInterval(intervalId);
+                break;
             }
-        }, retryInterval);
+            await Base.delayTime(retryInterval);
+        }
+
+        if (!isStopped) {
+            Base.logError(
+                "waitUntil",
+                stopConditionFunc.name,
+                "params",
+                args,
+                "RETURNED",
+                result,
+                "...STILL CHECKING !!!",
+                `BUT Max check times reached !!! GIVE UP !!!`
+            );
+        }
+
+        return result;
     }
 
-    static setElementColor(selector, colorCode) {
-        // $(selector).css("cssText", `color: ${colorCode} !important`);
-        $(selector).css("color", colorCode);
+    static async sha256(message) {
+        // encode as UTF-8
+        const msgBuffer = new TextEncoder().encode(message);
+
+        // hash the message
+        const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+
+        // convert ArrayBuffer to Array
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+
+        // convert bytes to hex string
+        const hashHex = hashArray
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+
+        Base.logWarn(message, "=> hased 256 to =>", hashHex);
+
+        return hashHex;
     }
 
-    static setIntervalNoDelay(func, interval, ...args) {
-        func(...args);
-        return setInterval(func, interval, ...args);
+    static async downloadFile(filename, text) {
+        var element = document.createElement("a");
+        element.setAttribute(
+            "href",
+            "data:text/plain;charset=utf-8," + encodeURIComponent(text)
+        );
+        element.setAttribute("download", filename);
+
+        element.style.display = "none";
+        document.body.appendChild(element);
+
+        element.click();
+        document.body.removeChild(element);
+    }
+
+    static async exportCsvFile(rows, fileName) {
+        var encodedUri = Base.generateCsvUrl(rows);
+
+        var link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", fileName);
+
+        // Required for FF
+        document.body.appendChild(link);
+
+        link.click();
+        link.remove();
+    }
+
+    static async generateCsvUrl(rows) {
+        // each row is an array of text cells
+        Base.logWarn(
+            "Generating url of csv file which contains below rows",
+            rows
+        );
+
+        let csvContent =
+            "data:application/csv;charset=utf-8," +
+            rows.map((e) => e.join(",")).join("\n");
+
+        return encodeURI(csvContent);
     }
 }

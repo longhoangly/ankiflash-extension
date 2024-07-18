@@ -1,74 +1,64 @@
 import { Common } from "../base/common.js";
 import { Constant } from "../base/constant.js";
 import { Translation } from "./dto/translation.js";
-import { CnGen } from "./generator/chinese.js";
-import { EnGen } from "./generator/english.js";
-import { FrGen } from "./generator/french.js";
-import { JpGen } from "./generator/japanese.js";
-import { SpGen } from "./generator/spanish.js";
-import { VnGen } from "./generator/vietnamese.js";
+import { Generator } from "./generator.js";
 
 $(document).ready(async () => {
-    // TODO: remove this when submitting to the store
-    await Common.presetOptions();
-
-    // Config traffic blocking
-    Common.blockTraffics();
-
     // Reder UI fields
     await AnkiFlash.setupLayout();
 
     // Register handlers
-    AnkiFlash.setupHandlers();
+    AnkiFlash.addHandlers();
 
     // Ready logs
-    Common.logWarning(
-        `=====>>>>>>>>>>>>>>===\n=====>>>>>>>>>>>>>>>>>>>>>=====\nFinished Loading....\nWelcome to AnkiFlash...\n=====>>>>>>>>>>>>>>>>>>>>>=====\n=====>>>>>>>>>>>>>>>>>>>>>=====`
-    );
+    Common.logWarn("==========>>>>>>>>>>>>>>>>>>>>>>>>>>>>>========");
+    Common.logWarn("==========>>>>>>>>>>>>>>>>>>>>>>>>>>>>>========");
+    Common.logWarn("===== Finished Loading.... ====================");
+    Common.logWarn("===== Welcome to AnkiFlash Generator ==========");
+    Common.logWarn("==========>>>>>>>>>>>>>>>>>>>>>>>>>>>>>========");
+    Common.logWarn("==========>>>>>>>>>>>>>>>>>>>>>>>>>>>>>========");
 });
 
 export class AnkiFlash {
-    static async setupHandlers() {
+    static async addHandlers() {
         $("#btnGenerate").click(async () => {
-            let translation = new Translation(
-                await Common.getStorage("source"),
-                await Common.getStorage("target")
-            );
+            let genInputDto = {
+                words: (await Common.getStorage("inputTxt"))
+                    .split("\n")
+                    .filter(Boolean),
+                translation: new Translation(
+                    await Common.getStorage("source"),
+                    await Common.getStorage("target")
+                ),
+                relatedWords: await Common.getStorage("relatedWords"),
+                isOnline: await Common.getStorage("isOnline"),
+                isAutoDict: await Common.getStorage("isAutoDict"),
+                dictionaries: {
+                    wordTypesDict: await Common.getStorage("wordTypesDict"),
+                    phoneticsDict: await Common.getStorage("phoneticsDict"),
+                    examplesDict: await Common.getStorage("examplesDict"),
+                    soundsDict: await Common.getStorage("soundsDict"),
+                    imagesDict: await Common.getStorage("imagesDict"),
+                    meaningDict: await Common.getStorage("meaningDict"),
+                },
+            };
 
-            let words = (await Common.getStorage("inputTxt"))
-                .split("\n")
-                .filter(Boolean);
+            genInputDto.dictionaries.combinedDicts = Common.distinctArray([
+                genInputDto.dictionaries.wordTypesDict,
+                genInputDto.dictionaries.phoneticsDict,
+                genInputDto.dictionaries.examplesDict,
+                genInputDto.dictionaries.soundsDict,
+                genInputDto.dictionaries.imagesDict,
+                genInputDto.dictionaries.meaningDict,
+            ]);
 
-            let allWordTypes = await Common.getStorage("allWordTypes");
-            let isOnline = await Common.getStorage("isOnline");
-            let isAutoDict = await Common.getStorage("isAutoDict");
+            let gen = new Generator(genInputDto);
+            Common.logWarn("gen", gen);
 
-            Common.logWarning("allWordTypes", allWordTypes);
-            Common.logWarning("isOnline", isOnline);
-            Common.logWarning("isAutoDict", isAutoDict);
+            let cards = await gen.generateCards();
+            Common.logWarn("cards", cards);
 
-            let gen = await AnkiFlash.#initializeGenerator(translation);
-            Common.logWarning("gen", gen);
-
-            gen.generateCards(words, allWordTypes, isOnline);
-
-            let wordTypesDict = await Common.getStorage("wordTypesDict");
-            let phoneticsDict = await Common.getStorage("phoneticsDict");
-            let examplesDict = await Common.getStorage("examplesDict");
-            let soundsDict = await Common.getStorage("soundsDict");
-            let imagesDict = await Common.getStorage("imagesDict");
-            let contentDict = await Common.getStorage("contentDict");
-            Common.logWarning(
-                "dicts",
-                wordTypesDict,
-                phoneticsDict,
-                examplesDict,
-                soundsDict,
-                imagesDict,
-                contentDict
-            );
-
-            Common.logWarning(Constant.FINISHED_MSG);
+            Common.logWarn(Constant.FINISHED_MSG);
         });
 
         $("#btnCancel").click(async () => {
@@ -80,74 +70,71 @@ export class AnkiFlash {
         });
     }
 
-    static async #initializeGenerator(transation) {
-        switch (transation.source) {
-            case Constant.ENGLISH:
-                return new EnGen(transation);
-            case Constant.JAPANESE:
-                return new JpGen(transation);
-            case Constant.VIETNAMESE:
-                return new VnGen(transation);
-            case Constant.FRENCH:
-                return new FrGen(transation);
-            case Constant.SPANISH:
-                return new SpGen(transation);
-            case Constant.CHINESE || Constant.CHINESE_TD || Constant.CHINESE_SP:
-                return new CnGen(transation);
-            default:
-                return new EnGen(transation);
-        }
-    }
-
     static async setupLayout() {
         let fieldConfigs = [
             {
                 type: "input",
-                handler: Common.inputChangedHandler,
-                fields: [{ id: "source", default: "English" }],
-                triggerOptionsIds: ["target"],
+                handler: AnkiFlash.#translationChangedHandler,
+                fields: [{ id: "source", default: Constant.ENGLISH }],
+                triggerOptionsIds: [
+                    "target",
+                    Constant.WORD_TYPES_DICT,
+                    Constant.PHONETICS_DICT,
+                    Constant.EXAMPLES_DICT,
+                    Constant.SOUNDS_DICT,
+                    Constant.IMAGES_DICT,
+                    Constant.MEANING_DICT,
+                ],
                 options: [
                     {
-                        value: "Vietnamese",
-                        text: "Vietnamese",
+                        value: Constant.VIETNAMESE,
+                        text: Constant.VIETNAMESE,
                     },
                     {
-                        value: "English",
-                        text: "English",
+                        value: Constant.ENGLISH,
+                        text: Constant.ENGLISH,
                     },
                     {
-                        value: "French",
-                        text: "French",
+                        value: Constant.FRENCH,
+                        text: Constant.FRENCH,
                     },
                     {
-                        value: "Japanese",
-                        text: "Japanese",
+                        value: Constant.JAPANESE,
+                        text: Constant.JAPANESE,
                     },
                 ],
             },
             {
                 type: "input",
-                handler: Common.inputChangedHandler,
-                fields: [{ id: "target", default: "English" }],
-                options: AnkiFlash.getTargetAsOptions,
+                handler: AnkiFlash.#translationChangedHandler,
+                fields: [{ id: "target", default: Constant.ENGLISH }],
+                triggerOptionsIds: [
+                    Constant.WORD_TYPES_DICT,
+                    Constant.PHONETICS_DICT,
+                    Constant.EXAMPLES_DICT,
+                    Constant.SOUNDS_DICT,
+                    Constant.IMAGES_DICT,
+                    Constant.MEANING_DICT,
+                ],
+                options: AnkiFlash.#getTargetAsOptions,
             },
             {
                 type: "input",
-                handler: Common.inputChangedHandler,
+                handler: AnkiFlash.#textboxChangedHandler,
                 fields: [
-                    { id: "inputTxt", default: "" },
-                    { id: "outputTxt", default: "" },
-                    { id: "failureTxt", default: "" },
+                    { id: "inputTxt" },
+                    { id: "outputTxt" },
+                    { id: "failureTxt" },
                 ],
             },
             {
                 type: "checked",
                 handler: Common.inputChangedHandler,
                 fields: [
-                    { id: "allWordTypes", default: true },
+                    { id: "relatedWords", default: true },
                     { id: "isOnline", default: true },
                     {
-                        handler: AnkiFlash.isAutoDictChangedHandler,
+                        handler: AnkiFlash.#isAutoDictChangedHandler,
                         id: "isAutoDict",
                         default: true,
                     },
@@ -157,112 +144,139 @@ export class AnkiFlash {
                 type: "input",
                 handler: Common.inputChangedHandler,
                 fields: [
-                    { id: "wordTypesDict", default: "oxford" },
-                    { id: "phoneticsDict", default: "oxford" },
-                    { id: "examplesDict", default: "oxford" },
-                    { id: "soundsDict", default: "oxford" },
-                    { id: "imagesDict", default: "oxford" },
-                    { id: "contentDict", default: "oxford" },
+                    { id: Constant.WORD_TYPES_DICT, default: Constant.OXFORD },
+                    { id: Constant.PHONETICS_DICT, default: Constant.OXFORD },
+                    { id: Constant.EXAMPLES_DICT, default: Constant.OXFORD },
+                    { id: Constant.SOUNDS_DICT, default: Constant.OXFORD },
+                    { id: Constant.IMAGES_DICT, default: Constant.OXFORD },
+                    { id: Constant.MEANING_DICT, default: Constant.OXFORD },
                 ],
-                options: [
-                    {
-                        value: "lacViet",
-                        text: "Lac Viet",
-                    },
-                    {
-                        value: "oxford",
-                        text: "Oxford",
-                    },
-                    {
-                        value: "cambridge",
-                        text: "Cambridge",
-                    },
-                    {
-                        value: "collins",
-                        text: "Collins",
-                    },
-                    {
-                        value: "kantan",
-                        text: "Kantan",
-                    },
-                    {
-                        value: "jisho",
-                        text: "Jisho",
-                    },
-                ],
+                forceGetOptions: true,
+                options: AnkiFlash.#getDictionaryAsOptions,
             },
         ];
         await Common.configDataFields(fieldConfigs);
+
+        for (const fieldId of ["outputTxt", "failureTxt"]) {
+            await Common.setFieldValue(fieldId, "");
+        }
+
+        for (const fieldId of ["inputTxt", "outputTxt", "failureTxt"]) {
+            await AnkiFlash.#calculateCounters(fieldId);
+        }
+
         await AnkiFlash.#displayDictMapping();
+    }
+
+    static async #textboxChangedHandler(event) {
+        await Common.inputChangedHandler(event);
+
+        let fieldId = event.data.fieldId;
+        await AnkiFlash.#calculateCounters(fieldId);
+    }
+
+    static async #calculateCounters(fieldId) {
+        let txtLines = (await Common.getStorage(fieldId))
+            .split("\n")
+            .filter(Boolean);
+
+        switch (fieldId) {
+            case "inputTxt":
+                $("#totalLbl").html(`Total: ${txtLines.length}`);
+                break;
+            case "outputTxt":
+                $("#outputLbl").html(`Completed: ${txtLines.length}`);
+                break;
+            case "failureTxt":
+                $("#failureLbl").html(`Failure: ${txtLines.length}`);
+                break;
+        }
     }
 
     static async #displayDictMapping() {
         let isAutoDict = await Common.getStorage("isAutoDict");
         if (isAutoDict) {
-            $("#dictMapping").hide("fast");
+            $("#dictMapping").hide();
+            $("#outputTxt").attr("rows", 9);
+            $("#failureTxt").attr("rows", 9);
+
+            for (const dict of [
+                "wordTypesDict",
+                "phoneticsDict",
+                "examplesDict",
+                "soundsDict",
+                "imagesDict",
+                "meaningDict",
+            ]) {
+                let dictOptions = await AnkiFlash.#getDictionaryAsOptions(dict);
+                Common.logDebug(dict, dictOptions);
+                await Common.setFieldValue(dict, dictOptions[0].value, true);
+            }
         } else {
-            $("#dictMapping").show("fast");
+            $("#dictMapping").show();
+            $("#outputTxt").attr("rows", 16);
+            $("#failureTxt").attr("rows", 16);
+            $("#failureTxt").attr("style", "margin-top: 11px");
         }
     }
 
-    static async isAutoDictChangedHandler(event) {
+    static async #isAutoDictChangedHandler(event) {
         await Common.inputChangedHandler(event);
         await AnkiFlash.#displayDictMapping();
     }
 
-    static async getTargetAsOptions() {
+    static async #getTargetAsOptions() {
         let source = await Common.getStorage("source");
-
-        let supportedTranslations = [];
-        for (const translations of Object.values(
-            Constant.SUPPORTED_TRANSLATIONS_BY_DICTS
-        )) {
-            supportedTranslations = supportedTranslations.concat(translations);
-        }
-
-        return supportedTranslations
-            .filter((t) => t.source === source)
-            .map((t) => {
-                return { value: t.target, text: t.target };
-            });
+        return Constant.SUPPORTED_TRANSLATIONS.filter(
+            (t) => t.translation.source === source
+        ).map((t) => {
+            return { value: t.translation.target, text: t.translation.target };
+        });
     }
 
-    static async getDictionaryAsOptions() {
+    static async #getDictionaryAsOptions(fieldId) {
         let translation = new Translation(
             await Common.getStorage("source"),
             await Common.getStorage("target")
         );
 
-        let supportedDictonaries = [];
-        switch (translation) {
-            case Constant.EN_EN:
-                supportedDictonaries = [
-                    Constant.ENGLISH,
-                    Constant.VIETNAMESE,
-                    Constant.CHINESE_TD,
-                    Constant.CHINESE_SP,
-                    Constant.FRENCH,
-                    Constant.JAPANESE,
-                ];
-                break;
-            case Constant.VIETNAMESE:
-                supportedDictonaries = [
-                    Constant.ENGLISH,
-                    Constant.FRENCH,
-                    Constant.JAPANESE,
-                    Constant.VIETNAMESE,
-                ];
-                break;
-            case Constant.FRENCH:
-                supportedDictonaries = [Constant.ENGLISH, Constant.VIETNAMESE];
-                break;
-            case Constant.JAPANESE:
-                supportedDictonaries = [Constant.ENGLISH, Constant.VIETNAMESE];
-                break;
-        }
+        let [dictionaries] = Constant.SUPPORTED_TRANSLATIONS.filter((t) =>
+            t.translation.equals(translation)
+        ).map((t) => t.dictionaries);
 
-        return supportedDictonaries.map((t) => {
-            return { value: t, text: t };
-        });
+        return dictionaries
+            .filter((d) => d.fields.includes(fieldId))
+            .map((d) => {
+                return { value: d.name, text: d.name };
+            });
+    }
+
+    static async #translationChangedHandler(event) {
+        await Common.inputChangedHandler(event);
+
+        let translation = new Translation(
+            await Common.getStorage("source"),
+            await Common.getStorage("target")
+        );
+
+        let isRelatedWordSupported = translation.belongTo([
+            // JISHO
+            new Translation(Constant.JAPANESE, Constant.ENGLISH),
+            // KANTAN
+            new Translation(Constant.JAPANESE, Constant.VIETNAMESE),
+            new Translation(Constant.VIETNAMESE, Constant.JAPANESE),
+            // OXFORD
+            new Translation(Constant.ENGLISH, Constant.ENGLISH),
+            // WIKITIONARY
+            new Translation(Constant.VIETNAMESE, Constant.VIETNAMESE),
+        ]);
+
+        if (!isRelatedWordSupported) {
+            Common.setFieldValue("relatedWords", false);
+            Common.disableElement("#relatedWords");
+        } else {
+            Common.setFieldValue("relatedWords", true);
+            Common.enableElement("#relatedWords");
+        }
     }
 }

@@ -1,7 +1,76 @@
 import { Constant } from "./constant.js";
 
 export class Common extends Constant {
-    static displayUiAlert(
+    static addHyperLink(innerHTML, hyperLink) {
+        let divShipment = document.createElement("a");
+        divShipment.className = "removeId";
+        divShipment.innerHTML = innerHTML;
+        divShipment.setAttribute("href", hyperLink);
+        divShipment.setAttribute("target", "_blank");
+        divShipment.style.fontWeight = "bold";
+        divShipment.style.margin = "10px 20px 10px 20px";
+        divShipment.style.cursor = "pointer";
+        divShipment.style.display = "block";
+        document.body.firstElementChild.appendChild(divShipment);
+    }
+
+    static addImage(caption, imgSrc) {
+        let divCon = document.createElement("div");
+        divCon.className = "removeId";
+        divCon.style.display = "inline";
+
+        let span = document.createElement("span");
+        span.innerHTML = caption;
+        span.className = "img_label removeId";
+        span.style.color = "DarkOrange";
+        divCon.appendChild(span);
+
+        let img = new Image();
+        img.src = imgSrc;
+        img.className = "ship_img_scan removeId";
+        img.style.background = "white";
+        img.style.marginBottom = "10px";
+        divCon.appendChild(img);
+
+        document.body.firstElementChild.appendChild(divCon);
+    }
+
+    static removeElements(selector = ".removeId") {
+        let tags = document.body.querySelectorAll(selector);
+        tags.forEach((tag) => tag.remove());
+    }
+
+    static async forceRefreshOptions(fieldId) {
+        await Common.setStorage(`${fieldId}OptionsIsForced`, true);
+    }
+
+    static async convertTimestampToZoneTime(timestamp) {
+        console.debug("local stamp", timestamp);
+
+        let date = new Date(timestamp);
+        console.debug("localTime", date.toLocaleString());
+
+        let localTimezone = (-1 * date.getTimezoneOffset()) / 60;
+        console.debug("localOffset", localTimezone);
+
+        let timezoneStr = await Common.getStorage("timezone");
+        let timezone = parseInt(timezoneStr);
+        console.debug("zoneOffset", timezone);
+
+        date.setHours(date.getHours() - localTimezone);
+        date.setHours(date.getHours() + timezone);
+        console.debug("zoneTime", date.toLocaleString());
+
+        return date;
+    }
+
+    static async convertTimestampToZoneStamp(timestamp) {
+        let date = await Common.convertTimestampToZoneTime(timestamp);
+        console.debug("zone stamp", date.getTime());
+        return date.getTime();
+    }
+
+    static async alertHtml(
         message,
         isSuccess = true,
         uiId = "alert",
@@ -16,9 +85,8 @@ export class Common extends Constant {
         $(`#${uiId}`).html(message);
         $(`#${uiId}`).attr("style", "display: block;");
 
-        Common.delayTime(timeout * 1000).then(() => {
-            $(`#${uiId}`).attr("style", "display: none;");
-        });
+        await Common.delayTime(timeout * 1000);
+        $(`#${uiId}`).attr("style", "display: none;");
     }
 
     static async configDataFields(fieldConfigs) {
@@ -30,7 +98,11 @@ export class Common extends Constant {
                     Common.AUTO_COMPLETE_FIELD_IDS.push(field.id);
                 }
 
-                Common.#popuplateDataOptions(config, field.id);
+                await Common.#popuplateDataOptions(
+                    config,
+                    field.id,
+                    config.forceGetOptions
+                );
                 Common.#configFieldTriggers(config, field, fieldConfigs);
                 Common.#configFieldOptionsTriggers(config, field, fieldConfigs);
             }
@@ -41,12 +113,12 @@ export class Common extends Constant {
         if (config.options != undefined && Array.isArray(config.options)) {
             if (config.options.length === 0) {
                 let noOptionsString = "No Optionsss";
-                await Common.setFieldOptions(fieldId, [
+                await Common.#setFieldOptions(fieldId, [
                     { value: noOptionsString, text: noOptionsString },
                 ]);
                 await Common.setFieldValue(fieldId, noOptionsString);
             } else {
-                await Common.setFieldOptions(fieldId, config.options);
+                await Common.#setFieldOptions(fieldId, config.options);
                 let storageValue = await Common.getStorage(fieldId);
 
                 if (
@@ -63,12 +135,11 @@ export class Common extends Constant {
             }
         } else if (config.options != undefined) {
             let optionsKey = `${fieldId}Options`;
-            let storageOptions = await Common.getStorage(optionsKey);
-
             let createdKey = `${fieldId}OptionsCreated`;
-            let created = await Common.getStorage(createdKey);
-
             let forceKey = `${fieldId}OptionsIsForced`;
+
+            let storageOptions = await Common.getStorage(optionsKey);
+            let created = await Common.getStorage(createdKey);
             let forceRefreshOptions = await Common.getStorage(forceKey);
 
             if (
@@ -76,7 +147,7 @@ export class Common extends Constant {
                 forceRefreshOptions ||
                 storageOptions === undefined ||
                 // refresh options list after one day
-                (Date.now() - created) / 1000 > 86400
+                Date.now() - created > 24 * 60 * 60 * 1000 // milis
             ) {
                 storageOptions = await config.options(fieldId);
                 await Common.setStorage(optionsKey, storageOptions);
@@ -89,10 +160,6 @@ export class Common extends Constant {
                 fieldId
             );
         }
-    }
-
-    static async forceRefreshFieldOptions(fieldId) {
-        await Common.setStorage(`${fieldId}OptionsIsForced`, true);
     }
 
     // the field updates trigger its handler
@@ -144,18 +211,21 @@ export class Common extends Constant {
             throw new Error(`Field type ${config.type} is not supported!`);
         }
 
+        if (config.isStartupTriggered || field.isStartupTriggered) {
+            await handler({ data: { fieldId: field.id } });
+        }
+
         return value;
     }
 
     // the field updates trigger other fields' handlers
     static async #configFieldTriggers(config, field, fieldConfigs) {
-        let triggerHandlerIds = field.triggerHandlerIds
-            ? field.triggerHandlerIds
-            : config.triggerHandlerIds;
+        let triggerHandlerIds =
+            field.triggerHandlerIds || config.triggerHandlerIds;
 
         let triggers = [];
         if (triggerHandlerIds && triggerHandlerIds.length > 0) {
-            Common.logWarning(
+            Common.logWarn(
                 `Field ${
                     field.id
                 } will trigger updates for '${triggerHandlerIds.join(
@@ -188,11 +258,11 @@ export class Common extends Constant {
                     triggerHandler: triggerHandler,
                 });
             }
-            Common.logWarning(field.id, "triggers", triggers);
+            Common.logWarn(field.id, "triggers", triggers);
         }
 
         for (const trigger of triggers) {
-            Common.logWarning(
+            Common.logWarn(
                 `Changes from '${field.id}' triggers ${trigger.triggerHandler.name}`
             );
 
@@ -204,7 +274,9 @@ export class Common extends Constant {
                     clearTimeout(time);
                     time = setTimeout(() => {
                         // Enter code here or a execute function.
-                        trigger.triggerHandler({ data: { fieldId: field.id } });
+                        trigger.triggerHandler({
+                            data: { fieldId: trigger.triggerId },
+                        });
                     }, 100);
                 });
             } else if (config.type === "radio") {
@@ -217,7 +289,7 @@ export class Common extends Constant {
                         time = setTimeout(() => {
                             // Enter code here or a execute function.
                             trigger.triggerHandler({
-                                data: { fieldId: field.id },
+                                data: { fieldId: trigger.triggerId },
                             });
                         }, 100);
                     }
@@ -229,7 +301,9 @@ export class Common extends Constant {
                     clearTimeout(time);
                     time = setTimeout(() => {
                         // Enter code here or a execute function.
-                        trigger.triggerHandler({ data: { fieldId: field.id } });
+                        trigger.triggerHandler({
+                            data: { fieldId: trigger.triggerId },
+                        });
                     }, 100);
                 });
             } else {
@@ -240,13 +314,12 @@ export class Common extends Constant {
 
     // the field updates trigger other field's options updates accordingly
     static async #configFieldOptionsTriggers(config, field, fieldConfigs) {
-        let triggerOptionsIds = field.triggerOptionsIds
-            ? field.triggerOptionsIds
-            : config.triggerOptionsIds;
+        let triggerOptionsIds =
+            field.triggerOptionsIds || config.triggerOptionsIds;
 
         let triggers = [];
         if (triggerOptionsIds && triggerOptionsIds.length > 0) {
-            Common.logWarning(
+            Common.logWarn(
                 `Field ${
                     field.id
                 } will trigger updates for '${triggerOptionsIds.join(
@@ -268,11 +341,11 @@ export class Common extends Constant {
                     triggerConfig: triggerConfig,
                 });
             }
-            Common.logWarning(field.id, "triggers", triggers);
+            Common.logWarn(field.id, "triggers", triggers);
         }
 
         for (const trigger of triggers) {
-            Common.logWarning(
+            Common.logWarn(
                 `Changes from '${field.id}' triggers ${trigger.triggerId}`
             );
 
@@ -328,7 +401,7 @@ export class Common extends Constant {
         }
     }
 
-    static async setFieldOptions(fieldId, options) {
+    static async #setFieldOptions(fieldId, options) {
         $(`#${fieldId}`).find("option").remove();
         for (let option of options) {
             $("<option/>")
@@ -385,22 +458,20 @@ export class Common extends Constant {
     }
 
     static async triggerInputChanged(fieldId) {
-        return Common.inputChangedHandler({ data: { fieldId: fieldId } });
+        return await Common.inputChangedHandler({ data: { fieldId: fieldId } });
     }
 
     static async inputChangedHandler(event) {
         let fieldId = event.data.fieldId;
-        Common.logInfo("event.data.fieldId > ", event.data.fieldId);
+        Common.logInfo("event.data.fieldId >", fieldId);
 
-        let tagName = $(`#${fieldId}`).prop("tagName");
-        if (tagName === undefined) {
-            tagName = $(`[name='${fieldId}']`).prop("tagName");
-        }
+        let tagName =
+            $(`#${fieldId}`).prop("tagName") ||
+            $(`[name='${fieldId}']`).prop("tagName");
 
-        let type = $(`#${fieldId}`).prop("type");
-        if (type === undefined) {
-            type = $(`[name='${fieldId}']`).prop("type");
-        }
+        let type =
+            $(`#${fieldId}`).prop("type") ||
+            $(`[name='${fieldId}']`).prop("type");
 
         let input = $(`#${fieldId}`).val();
 
@@ -422,7 +493,7 @@ export class Common extends Constant {
         await Common.setStorage(`${fieldId}`, input);
 
         let output = await Common.getStorage(`${fieldId}`);
-        Common.logInfo("Saved storage...", `${fieldId}`, `[${output}]`);
+        Common.logInfo("Saved storage...", `[${fieldId}]`, `[${output}]`);
 
         if (Common.AUTO_COMPLETE_FIELD_IDS.includes(fieldId)) {
             await Common.#addOptionAutoCompleteField(input, fieldId);
@@ -431,35 +502,43 @@ export class Common extends Constant {
         return input;
     }
 
-    static async setFieldValue(fieldId, value) {
+    static async setFieldValue(fieldId, value, isEventFired = false) {
         await $(`#${fieldId}`).val(value);
         let setValue = await Common.triggerInputChanged(fieldId);
 
-        let tagName = $(`#${fieldId}`).prop("tagName");
-        let type = $(`#${fieldId}`).prop("type");
-
         if (setValue !== value) {
-            tagName ? tagName : $(`[name='${fieldId}']`).prop("tagName");
-            type ? type : $(`[name='${fieldId}']`).prop("type");
+            let tagName =
+                $(`#${fieldId}`).prop("tagName") ||
+                $(`[name='${fieldId}']`).prop("tagName");
+
+            let type =
+                $(`#${fieldId}`).prop("type") ||
+                $(`[name='${fieldId}']`).prop("type");
 
             // CHECKBOX value
             if (tagName === "INPUT" && type === "checkbox") {
-                Common.logWarning("set checkbox value", fieldId, value);
+                Common.logInfo("set checkbox value", fieldId, value);
                 $(`#${fieldId}`).prop("checked", value);
+                await Common.triggerInputChanged(fieldId);
             }
-            await Common.triggerInputChanged(fieldId);
 
             // RADIO value
             if (tagName === "INPUT" && type === "radio") {
-                Common.logWarning("set radio value", fieldId, value);
+                Common.logInfo("set radio value", fieldId, value);
                 $(`input[name='${fieldId}'][value='${value}']`).click();
+                await Common.setStorage(fieldId, value);
             }
+        }
+
+        if (isEventFired) {
+            $(`#${fieldId}`).trigger("input");
         }
     }
 
     static async getFieldValue(key, defaultValue = "") {
         let storageValue = await Common.getStorage(key);
-        if (storageValue == undefined) {
+
+        if (storageValue === undefined || ["routeDate"].includes(key)) {
             await Common.setStorage(key, defaultValue);
         }
 
@@ -468,62 +547,41 @@ export class Common extends Constant {
 
     static async presetOptions(
         jsonPath = "../../data/default-options.json",
-        storageConfigName = "masterConfig"
+        storageConfigName = "ankiFlashOptions"
     ) {
         Common.logInfo(`loading config file ${jsonPath} into the storage...`);
-
-        let jsonConfig = await Common.simpleFetchJson(jsonPath);
+        let jsonConfig = await Common.fetchJsonContent(jsonPath);
         await Common.setStorage(storageConfigName, jsonConfig);
-
-        let flattenConfig = await Common.flattenJSON(jsonConfig);
-        for (let key in flattenConfig) {
-            Common.logInfo(key, flattenConfig[key]);
-
-            if (Array.isArray(flattenConfig[key])) {
-                await Common.setStorage(key, flattenConfig[key].join(","));
-            } else {
-                await Common.setStorage(key, flattenConfig[key]);
-            }
-        }
-    }
-
-    static async saveJsonIntoStorage(jsonPath = "../data/stress/test.json") {
-        Common.logInfo(
-            `loading stress test monitor file ${jsonPath} into the storage...`
-        );
-
-        let jsonConfig = await Common.simpleFetchJson(jsonPath);
-        for (let key in jsonConfig) {
-            Common.logInfo(key, jsonConfig[key]);
-            await Common.setStorage(key, jsonConfig[key]);
-        }
     }
 
     static async blockTraffics() {
-        let isTrafficBlocked = await Common.getStorage(
-            "traffic.isTrafficBlocked"
-        );
+        let isBlocked = await Common.getJsonStorage("ankiFlashOptions", [
+            "traffic",
+            "isBlocked",
+        ]);
 
-        let trafficUrls = (await Common.getStorage("traffic.baseUrls")).split(
-            ","
-        );
+        let trafficUrls = await Common.getJsonStorage("ankiFlashOptions", [
+            "traffic",
+            "baseUrls",
+        ]);
 
-        trafficUrls.forEach(async (domain, index) => {
-            let blockingRule = {
-                id: 22 + index,
-                priority: 1,
-                action: { type: "block" },
-                condition: {
-                    urlFilter: `${domain}/*`,
-                    resourceTypes: ["main_frame", "sub_frame"],
-                },
-            };
+        trafficUrls.forEach(async (domain) => {
+            if (isBlocked) {
+                let ruleId = parseInt(Common.randomInt(99999999));
+                Common.logInfo("Add blocking rules", domain, ruleId);
 
-            if (isTrafficBlocked) {
-                Common.logWarning("Add blocking rules", blockingRule.id);
                 chrome.declarativeNetRequest.updateDynamicRules({
-                    removeRuleIds: [blockingRule.id],
-                    addRules: [blockingRule],
+                    addRules: [
+                        {
+                            id: ruleId,
+                            priority: 1,
+                            action: { type: "block" },
+                            condition: {
+                                urlFilter: `${domain}/*`,
+                                resourceTypes: ["main_frame", "sub_frame"],
+                            },
+                        },
+                    ],
                 });
 
                 Common.logInfo("Query existing tabs", `*://*.${domain}/*`);
@@ -533,12 +591,66 @@ export class Common extends Constant {
 
                 Common.logInfo("Closing existing tabs", tabs);
                 chrome.tabs.remove(tabs.map((t) => t.id));
-            } else {
-                chrome.declarativeNetRequest.updateDynamicRules({
-                    removeRuleIds: [blockingRule.id],
-                });
-                Common.logInfo("Cleanup blocking rules", blockingRule.id);
             }
+        });
+    }
+
+    static async clearNetworkRules() {
+        const currentRules =
+            await chrome.declarativeNetRequest.getDynamicRules();
+        Common.logWarn("currentRules", currentRules);
+
+        await chrome.declarativeNetRequest.updateDynamicRules({
+            removeRuleIds: currentRules.map((rule) => rule.id),
+        });
+    }
+
+    static async setCookie(ruleId, cookieKey, baseUrl, extraCookies = []) {
+        let cookieString = await Common.getStorage(cookieKey);
+
+        if (extraCookies.length > 0) {
+            let extraCookieString = extraCookies
+                .map((c) => `${c.name}=${c.value}`)
+                .join("; ");
+            cookieString = `${extraCookieString}; ${cookieString}`;
+        }
+
+        Common.logInfo("Setting cookie", {
+            cookieKey: cookieKey,
+            baseUrl: baseUrl,
+            cookieString: cookieString,
+        });
+
+        let addRules = [];
+        if (cookieString) {
+            let addRule = {
+                id: ruleId,
+                priority: 1,
+                action: {
+                    type: "modifyHeaders",
+                    requestHeaders: [
+                        {
+                            header: "cookie",
+                            operation: "set",
+                            value: cookieString,
+                        },
+                    ],
+                },
+                condition: {
+                    urlFilter: `${baseUrl}/*`,
+                },
+            };
+
+            if (baseUrl.includes("thub")) {
+                addRule.condition.domainType = "thirdParty";
+            }
+
+            addRules.push(addRule);
+        }
+
+        chrome.declarativeNetRequest.updateDynamicRules({
+            removeRuleIds: [ruleId],
+            addRules: addRules,
         });
     }
 }

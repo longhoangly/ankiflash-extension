@@ -28,4 +28,7 @@ a:hover {
 textarea {
     resize: none;
     font-size: small !important;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: scroll;
 }

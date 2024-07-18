@@ -1,76 +1,168 @@
+import { Constant } from "../base/constant.js";
+import { Wiktionary } from "./dictionary/Wiktionary.js";
+import { Cambridge } from "./dictionary/cambridge.js";
+import { Collins } from "./dictionary/collins.js";
+import { Jisho } from "./dictionary/jisho.js";
+import { Kantan } from "./dictionary/kantan.js";
+import { LacViet } from "./dictionary/lacviet.js";
+import { Oxford } from "./dictionary/oxford.js";
+import { Translation } from "./dto/translation.js";
+import { Flash } from "./helper/flash.js";
+
 export class Dictionary {
-    name;
-    document;
-    translation;
+    genInputDto;
 
-    word;
-    wordId;
-    oriWord;
+    constructor(genInputDto) {
+        this.genInputDto = genInputDto;
+    }
 
-    ankiDir;
-    image;
-    sounds;
+    async standardizedWords() {
+        let standardizedWords = [];
 
-    wordType;
-    phonetic;
+        for (const word of this.genInputDto.words) {
+            if (this.genInputDto.relatedWords) {
+                let cardInputDto = await Flash.convertGenToCardDto(
+                    this.genInputDto,
+                    word
+                );
 
-    constructor() {
-        if (new.target === Dictionary) {
-            throw new TypeError(
-                `Cannot construct ${Dictionary.name} instances directly. It's abstract class.`
-            );
+                if (
+                    this.genInputDto.translation.belongTo([
+                        new Translation(Constant.JAPANESE, Constant.VIETNAMESE),
+                        new Translation(Constant.VIETNAMESE, Constant.JAPANESE),
+                    ])
+                ) {
+                    let kantan = new Kantan(cardInputDto);
+                    standardizedWords = standardizedWords.concat(
+                        await kantan.standardizedWords()
+                    );
+                } else if (
+                    this.genInputDto.translation.equals(
+                        new Translation(Constant.ENGLISH, Constant.ENGLISH)
+                    )
+                ) {
+                    let oxford = new Oxford(cardInputDto);
+                    standardizedWords = standardizedWords.concat(
+                        await oxford.standardizedWords()
+                    );
+                } else if (
+                    this.genInputDto.translation.equals(
+                        new Translation(Constant.JAPANESE, Constant.ENGLISH)
+                    )
+                ) {
+                    let jisho = new Jisho(cardInputDto);
+                    standardizedWords = standardizedWords.concat(
+                        await jisho.standardizedWords()
+                    );
+                } else if (
+                    this.genInputDto.translation.equals(
+                        new Translation(
+                            Constant.VIETNAMESE,
+                            Constant.VIETNAMESE
+                        )
+                    )
+                ) {
+                    let wiktionary = new Wiktionary(cardInputDto);
+                    standardizedWords = standardizedWords.concat(
+                        await wiktionary.standardizedWords()
+                    );
+                }
+            } else {
+                standardizedWords.push({
+                    word: word,
+                    wordId: word,
+                    wordOri: word,
+                });
+            }
         }
+        return standardizedWords;
     }
 
-    async search(_formattedWord) {
-        throw new Error("NotImplementedError");
+    async getWordTypes(cardInputDto) {
+        let dict = await this.getDictInstance(
+            this.genInputDto.dictionaries.wordTypesDict,
+            cardInputDto
+        );
+        return dict.getWordTypes();
     }
 
-    async isInvalidWord() {
-        throw new Error("NotImplementedError");
+    async getPhonetics(cardInputDto) {
+        let dict = await this.getDictInstance(
+            this.genInputDto.dictionaries.phoneticsDict,
+            cardInputDto
+        );
+        return dict.getPhonetics();
     }
 
-    async getWordTypes() {
-        throw new Error("NotImplementedError");
+    async getExamples(cardInputDto) {
+        let dict = await this.getDictInstance(
+            this.genInputDto.dictionaries.examplesDict,
+            cardInputDto
+        );
+        return dict.getExamples();
     }
 
-    async getExamples() {
-        throw new Error("NotImplementedError");
+    async getSounds(cardInputDto) {
+        let dict = await this.getDictInstance(
+            this.genInputDto.dictionaries.soundsDict,
+            cardInputDto
+        );
+        return dict.getSounds();
     }
 
-    async getPhonetics() {
-        throw new Error("NotImplementedError");
+    async getImages(cardInputDto) {
+        let dict = await this.getDictInstance(
+            this.genInputDto.dictionaries.imagesDict,
+            cardInputDto
+        );
+        return dict.getImages();
     }
 
-    async getImages(ankiDir, isOnline) {
-        throw new Error("NotImplementedError");
+    async getMeaning(cardInputDto) {
+        let dict = await this.getDictInstance(
+            this.genInputDto.dictionaries.meaningDict,
+            cardInputDto
+        );
+        return dict.getMeaning();
     }
 
-    async getSounds(ankiDir, isOnline) {
-        throw new Error("NotImplementedError");
+    async getCopyright(cardInputDto) {
+        return `The content of this card is get from the following dictionaries: ${cardInputDto.dictionaries.combinedDicts.join(
+            ", "
+        )}`;
     }
 
-    async get_meaning() {
-        throw new Error("NotImplementedError");
+    async getTag(cardInputDto) {
+        return cardInputDto.standardizedWord.word[0];
     }
 
-    async getTag() {
-        return word[0];
-    }
+    async getDictInstance(dictName, cardInputDto) {
+        let dict;
 
-    async setCardWord(card) {
-        card.word = word;
-        card.wordId = wordId;
-        card.oriWord = oriWord;
+        switch (dictName) {
+            case Constant.CAMBRIDGE:
+                dict = new Cambridge(cardInputDto);
+                break;
+            case Constant.COLLINS:
+                dict = new Collins(cardInputDto);
+                break;
+            case Constant.JISHO:
+                dict = new Jisho(cardInputDto);
+                break;
+            case Constant.KANTAN:
+                dict = new Kantan(cardInputDto);
+                break;
+            case Constant.LACVIET:
+                dict = new LacViet(cardInputDto);
+                break;
+            case Constant.WIKTIONARY:
+                dict = new Wiktionary(cardInputDto);
+                break;
+            default:
+                dict = new Oxford(cardInputDto);
+                break;
+        }
 
-        logging.info("card.word = {}".format(card.word));
-        logging.info("card.wordId = {}".format(card.wordId));
-        logging.info("card.oriWord = {}".format(card.oriWord));
-
-        return card;
-    }
-
-    async getDictionaryName() {
-        throw new Error("NotImplementedError");
+        return dict;
     }
 }
