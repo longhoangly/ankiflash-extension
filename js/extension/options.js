@@ -25,24 +25,13 @@ $(document).ready(async () => {
 
 export class Options {
     static async loadConfigsFromStorage() {
-        let jsonConfig = await Common.getStorage("ankiFlashOptions");
+        let jsonConfig = await Common.getStorage("ankiflashOptions");
         Common.logInfo("storage jsonConfig", jsonConfig);
         $("#options").html(JSON.stringify(jsonConfig, null, 4));
     }
 
     static async saveConfigsToStorage() {
         let jsonConfig = Common.stringToJson($("#options").val());
-        await Common.setStorage("ankiFlashOptions", jsonConfig);
-
-        let flattenConfig = await Common.flattenJSON(jsonConfig);
-        for (let key in flattenConfig) {
-            Common.logInfo(key, flattenConfig[key]);
-
-            if (Array.isArray(flattenConfig[key])) {
-                await Common.setStorage(key, flattenConfig[key].join(","));
-            } else {
-                await Common.setStorage(key, flattenConfig[key]);
-            }
-        }
+        await Common.setStorage("ankiflashOptions", jsonConfig);
     }
 }

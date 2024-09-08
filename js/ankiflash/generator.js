@@ -12,6 +12,10 @@ export class Generator {
     }
 
     async generateCards() {
+        for (const fieldId of ["outputTxt", "failureTxt"]) {
+            await Common.setFieldValue(fieldId, "");
+        }
+
         let dictionary = new Dictionary(this.genInputDto);
         this.genInputDto.standardizedWords =
             await dictionary.standardizedWords();
@@ -26,9 +30,14 @@ export class Generator {
             outputCards.push(
                 await this.#generateCard(dictionary, cardInputDto)
             );
+            await this.#calculateProgress(outputCards);
+
+            if (await Common.getTabStorage("isCanceled")) {
+                await Common.setTabStorage("isCanceled", false);
+                break;
+            }
         }
 
-        await this.#generateCsv(outputCards);
         return outputCards;
     }
 
@@ -46,7 +55,7 @@ export class Generator {
             card.tag = await dictionary.getTag(cardInputDto);
             card.status = "SUCCESS";
 
-            let currentOutput = (await Common.getStorage("outputTxt")) || "";
+            let currentOutput = (await Common.getTabStorage("outputTxt")) || "";
             await Common.setFieldValue(
                 "outputTxt",
                 card.meaning + "\n" + currentOutput,
@@ -58,7 +67,7 @@ export class Generator {
             card.status = "FAILED";
             card.errorMessage = `${cardInputDto.standardizedWord.word} - failed to create flash card!`;
 
-            let currentFailure = (await Common.getStorage("failureTxt")) || "";
+            let currentFailure = (await Common.getTabStorage("failureTxt")) || "";
             await Common.setFieldValue(
                 "failureTxt",
                 card.errorMessage + "\n" + currentFailure,
@@ -69,11 +78,20 @@ export class Generator {
         return card;
     }
 
-    async #generateCsv(cards) {
+    async #calculateProgress(cards) {
+        let percentage = parseInt(
+            (cards.length / this.genInputDto.standardizedWords.length) * 100
+        );
+
+        $("#progressbar").text(`${percentage}%`);
+        $("#progressbar").attr("style", `width: ${percentage}%`);
+    }
+
+    async generateCsv(cards) {
         let cardLines = [];
         let mappingLines = [];
 
-        for (const card of cards) {
+        for (const card of cards.filter((c) => c.status === "SUCCESS")) {
             cardLines.push([
                 "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
                     card.cardInputDto.standardizedWord.word,
@@ -117,16 +135,18 @@ export class Generator {
             ]);
         }
 
-        var deckBlob = new Blob(cardLines, {
-            type: "text/plain",
-        });
-        var deckUrl = URL.createObjectURL(deckBlob);
+        var deckUrl = URL.createObjectURL(
+            new Blob(cardLines, {
+                type: "text/csv",
+            })
+        );
         await Flash.downloadFiles([deckUrl], `AnkiFlash/${Constant.ANKI_DECK}`);
 
-        let mappingBlob = new Blob(mappingLines, {
-            type: "text/plain",
-        });
-        let mappingUrl = URL.createObjectURL(mappingBlob);
+        let mappingUrl = URL.createObjectURL(
+            new Blob(mappingLines, {
+                type: "text/csv",
+            })
+        );
         await Flash.downloadFiles(
             [mappingUrl],
             `AnkiFlash/${Constant.MAPPING_CSV}`

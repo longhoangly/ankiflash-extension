@@ -1,2 +1,3 @@
-# ankiflash-extension
-Small extension helps us to get HTML content from web pages and send back to AnkiFlash localhost server
+# AnkiFlash Generator
+
+A tool generates flash-cards for importing into Anki memorizing app (https://apps.ankiweb.net).

@@ -26,9 +26,8 @@ export class Oxford {
         Common.logWarn(
             `getWordTypes ${this.cardInputDto.dictionaries.wordTypesDict}`
         );
-        await this.#getOxfordDocument();
 
-        let wordTypes = $(this.cardInputDto.oxfordDocument).find("span.pos");
+        let wordTypes = $(await this.#getOxfordDocument()).find("span.pos");
         wordTypes = `(${$(wordTypes[0].outerHTML).text()})`;
 
         Common.logWarn("wordTypes", wordTypes);
@@ -39,9 +38,8 @@ export class Oxford {
         Common.logWarn(
             `getPhonetics ${this.cardInputDto.dictionaries.phoneticsDict}`
         );
-        await this.#getOxfordDocument();
 
-        let phonetics = $(this.cardInputDto.oxfordDocument).find("span.phon");
+        let phonetics = $(await this.#getOxfordDocument()).find("span.phon");
         phonetics = `${$(phonetics[0].outerHTML).text()} ${$(
             phonetics[1].outerHTML
         ).text()}`;
@@ -54,9 +52,8 @@ export class Oxford {
         Common.logWarn(
             `getExamples ${this.cardInputDto.dictionaries.examplesDict}`
         );
-        await this.#getOxfordDocument();
 
-        let exampleTags = $(this.cardInputDto.oxfordDocument).find("span.x");
+        let exampleTags = $(await this.#getOxfordDocument()).find("span.x");
         exampleTags = exampleTags.slice(0, count);
 
         let examples = [];
@@ -84,11 +81,10 @@ export class Oxford {
         Common.logWarn(
             `getSounds ${this.cardInputDto.dictionaries.soundsDict}`
         );
-        await this.#getOxfordDocument();
 
         let soundLinks = [];
         for (const selector of ["div.pron-uk", "div.pron-us"]) {
-            let [soundTag] = $(this.cardInputDto.oxfordDocument).find(selector);
+            let [soundTag] = $(await this.#getOxfordDocument()).find(selector);
             soundLinks.push($(soundTag.outerHTML).attr("data-src-mp3"));
         }
 
@@ -118,9 +114,8 @@ export class Oxford {
         Common.logWarn(
             `getImages ${this.cardInputDto.dictionaries.imagesDict}`
         );
-        await this.#getOxfordDocument();
 
-        let [imageTag] = $(this.cardInputDto.oxfordDocument).find("a.topic");
+        let [imageTag] = $(await this.#getOxfordDocument()).find("a.topic");
         if (imageTag) {
             let imageLink = $(imageTag.outerHTML).attr("href");
 
@@ -145,31 +140,72 @@ export class Oxford {
         Common.logWarn(
             `getMeaning ${this.cardInputDto.dictionaries.meaningDict}`
         );
-        await this.#getOxfordDocument();
 
-        let [contentTag] = $(this.cardInputDto.oxfordDocument).find(
-            "#entryContent"
+        let [sense] = $(await this.#getOxfordDocument()).find(
+            "ol.senses_multiple"
         );
 
-        let entryContent = $(contentTag.outerHTML).prop("outerHTML");
-        entryContent = entryContent.replaceAll("\n", "").replaceAll("\r", "");
-        entryContent =
-            `<link rel="stylesheet" href="https://www.oxfordlearnersdictionaries.com/external/styles/responsive.css?version=2.3.60" />` +
-            entryContent;
-        Common.logWarn("meaning", entryContent.slice(0, 1000));
+        let meaning = sense.outerHTML
+            .replaceAll("\n", " ")
+            .replaceAll("\r", " ")
+            .replaceAll("\t", " ");
+        meaning = meaning.replaceAll("unbox", "unbox is-active");
+        meaning = meaning.replaceAll(
+            '"ring-links-box"',
+            '"ring-links-box" style="display: none;"'
+        );
 
-        return entryContent;
+        return `<div class="content-container"> ${meaning} </div> <style> ${await this.#getOxfordCss()} </style>`;
     }
 
     async #getOxfordDocument() {
-        if (!this.cardInputDto.oxfordDocument) {
-            this.cardInputDto.oxfordDocument = await Common.fetchNeutral({
-                method: "GET",
-                respType: Common.RESP_TYPE_ENUM.TEXT,
-                url: Constant.OX_EN_EN_SEARCH_URL.format(
-                    this.cardInputDto.standardizedWord.wordId
-                ),
-            });
+        if (this.cardInputDto.oxfordDocument) {
+            return this.cardInputDto.oxfordDocument;
         }
+
+        this.cardInputDto.oxfordDocument = await Common.fetchNeutral({
+            method: "GET",
+            respType: Common.RESP_TYPE_ENUM.TEXT,
+            url: Constant.OX_EN_EN_URL.format(
+                this.cardInputDto.standardizedWord.wordId
+            ),
+        });
+
+        return this.cardInputDto.oxfordDocument;
+    }
+
+    async #getOxfordCss() {
+        if (this.cardInputDto.oxfordCss) {
+            return this.cardInputDto.oxfordCss;
+        }
+
+        let urlContent = await Common.getUrlContent(
+            `${Constant.OX_BASE_URL}/external/styles/oald10.css?version=2.3.61`
+        );
+
+        let oxfordCss = urlContent
+            .replaceAll("\n", " ")
+            .replaceAll("\r", " ")
+            .replaceAll("\t", " ");
+
+        oxfordCss = oxfordCss.replaceAll(/6f6f6f/gi, "1da8af");
+        oxfordCss = oxfordCss.replaceAll(/1a3561/gi, "1da8af");
+        oxfordCss = oxfordCss.replaceAll(/333333/gi, "1da8af");
+        oxfordCss = oxfordCss.replaceAll(/0069b4/gi, "1da8af");
+        oxfordCss = oxfordCss.replaceAll(/faded7/gi, "36454f");
+
+        oxfordCss = oxfordCss.replaceAll(/#fdf3f0/gi, "inherit");
+        oxfordCss = oxfordCss.replaceAll(
+            "../images",
+            "https://www.oxfordlearnersdictionaries.com/external/images"
+        );
+
+        oxfordCss = oxfordCss.replaceAll(
+            "div.collapse .body .unbox:first-of-type",
+            "div.collapse .body .unbox"
+        );
+
+        this.cardInputDto.oxfordCss = oxfordCss;
+        return oxfordCss;
     }
 }

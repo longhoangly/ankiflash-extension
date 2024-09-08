@@ -23,23 +23,23 @@ export class AnkiFlash {
     static async addHandlers() {
         $("#btnGenerate").click(async () => {
             let genInputDto = {
-                words: (await Common.getStorage("inputTxt"))
+                words: (await Common.getTabStorage("inputTxt"))
                     .split("\n")
                     .filter(Boolean),
                 translation: new Translation(
-                    await Common.getStorage("source"),
-                    await Common.getStorage("target")
+                    await Common.getTabStorage("source"),
+                    await Common.getTabStorage("target")
                 ),
-                relatedWords: await Common.getStorage("relatedWords"),
-                isOnline: await Common.getStorage("isOnline"),
-                isAutoDict: await Common.getStorage("isAutoDict"),
+                relatedWords: await Common.getTabStorage("relatedWords"),
+                isOnline: await Common.getTabStorage("isOnline"),
+                isAutoDict: await Common.getTabStorage("isAutoDict"),
                 dictionaries: {
-                    wordTypesDict: await Common.getStorage("wordTypesDict"),
-                    phoneticsDict: await Common.getStorage("phoneticsDict"),
-                    examplesDict: await Common.getStorage("examplesDict"),
-                    soundsDict: await Common.getStorage("soundsDict"),
-                    imagesDict: await Common.getStorage("imagesDict"),
-                    meaningDict: await Common.getStorage("meaningDict"),
+                    wordTypesDict: await Common.getTabStorage("wordTypesDict"),
+                    phoneticsDict: await Common.getTabStorage("phoneticsDict"),
+                    examplesDict: await Common.getTabStorage("examplesDict"),
+                    soundsDict: await Common.getTabStorage("soundsDict"),
+                    imagesDict: await Common.getTabStorage("imagesDict"),
+                    meaningDict: await Common.getTabStorage("meaningDict"),
                 },
             };
 
@@ -58,15 +58,12 @@ export class AnkiFlash {
             let cards = await gen.generateCards();
             Common.logWarn("cards", cards);
 
+            await gen.generateCsv(cards);
             Common.logWarn(Constant.FINISHED_MSG);
         });
 
         $("#btnCancel").click(async () => {
-            alert("Cancel btn clicked!");
-        });
-
-        $("#btnDownload").click(async () => {
-            alert("Download btn clicked!");
+            await Common.setTabStorage("isCanceled", true);
         });
     }
 
@@ -176,7 +173,7 @@ export class AnkiFlash {
     }
 
     static async #calculateCounters(fieldId) {
-        let txtLines = (await Common.getStorage(fieldId))
+        let txtLines = (await Common.getTabStorage(fieldId))
             .split("\n")
             .filter(Boolean);
 
@@ -194,11 +191,13 @@ export class AnkiFlash {
     }
 
     static async #displayDictMapping() {
-        let isAutoDict = await Common.getStorage("isAutoDict");
+        let isAutoDict = await Common.getTabStorage("isAutoDict");
         if (isAutoDict) {
             $("#dictMapping").hide();
             $("#outputTxt").attr("rows", 9);
-            $("#failureTxt").attr("rows", 9);
+            $("#failureTxt").attr("rows", 8);
+            $("#failureTxt").attr("style", "margin-top: 2px");
+            $("#translationLbl").attr("style", "margin-top: 0px");
 
             for (const dict of [
                 "wordTypesDict",
@@ -216,7 +215,8 @@ export class AnkiFlash {
             $("#dictMapping").show();
             $("#outputTxt").attr("rows", 16);
             $("#failureTxt").attr("rows", 16);
-            $("#failureTxt").attr("style", "margin-top: 11px");
+            $("#failureTxt").attr("style", "margin-top: 0px");
+            $("#translationLbl").attr("style", "margin-top: 5px");
         }
     }
 
@@ -226,7 +226,7 @@ export class AnkiFlash {
     }
 
     static async #getTargetAsOptions() {
-        let source = await Common.getStorage("source");
+        let source = await Common.getTabStorage("source");
         return Constant.SUPPORTED_TRANSLATIONS.filter(
             (t) => t.translation.source === source
         ).map((t) => {
@@ -236,8 +236,8 @@ export class AnkiFlash {
 
     static async #getDictionaryAsOptions(fieldId) {
         let translation = new Translation(
-            await Common.getStorage("source"),
-            await Common.getStorage("target")
+            await Common.getTabStorage("source"),
+            await Common.getTabStorage("target")
         );
 
         let [dictionaries] = Constant.SUPPORTED_TRANSLATIONS.filter((t) =>
@@ -255,8 +255,8 @@ export class AnkiFlash {
         await Common.inputChangedHandler(event);
 
         let translation = new Translation(
-            await Common.getStorage("source"),
-            await Common.getStorage("target")
+            await Common.getTabStorage("source"),
+            await Common.getTabStorage("target")
         );
 
         let isRelatedWordSupported = translation.belongTo([

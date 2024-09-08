@@ -13,6 +13,7 @@ export class Base {
     };
 
     static RESP_TYPE_ENUM = {
+        BLOB: "BLOB",
         TEXT: "TEXT",
         JSON: "JSON",
         RESPONSE: "RESPONSE",
@@ -88,8 +89,11 @@ export class Base {
         return random;
     }
 
-    static randomInt(max) {
-        return Math.floor(Math.random() * max + 1);
+    static randomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+
+        return parseInt(Math.floor(Math.random() * (max - min)) + min);
     }
 
     static randomItems(arr, offset = 2) {
@@ -334,28 +338,35 @@ export class Base {
         return arr;
     }
 
-    static getJsonDate(offsetDate = 0, separator = "-") {
+    static getJsonDate(
+        timeConfig = {
+            offsetDate: 0,
+            separator: "-",
+            // Get current date by Singapore timezone
+            timezone: +7,
+            onlyDate: true,
+        }
+    ) {
         let tmpDate = new Date();
         Base.logDebug("tmpDate.getTime()", tmpDate.getTime());
 
         let date = new Date(tmpDate.getTime());
         let localTimezone = (-1 * date.getTimezoneOffset()) / 60;
 
-        // Get current date by Singapore timezone
-        let timezone = +8;
-
-        date.setDate(date.getDate() + offsetDate);
+        date.setDate(date.getDate() + timeConfig.offsetDate);
         date.setHours(date.getHours() - localTimezone);
-        date.setHours(date.getHours() + timezone);
+        date.setHours(date.getHours() + timeConfig.timezone);
         Base.logDebug("date.getTime()", date.getTime());
 
         let dateString = new Date(
             date.getTime() - date.getTimezoneOffset() * 60000
-        )
-            .toJSON()
-            .slice(0, 10);
+        ).toJSON();
 
-        return dateString.replaceAll("-", separator);
+        if (timeConfig.onlyDate) {
+            dateString = dateString.slice(0, 10);
+        }
+
+        return dateString.replaceAll("-", timeConfig.separator);
     }
 
     static requiredField(varValue, varName) {
@@ -447,7 +458,9 @@ export class Base {
 
         let hours = (timeInMinute - minutes) / 60;
 
-        return `${hours.toString().padStart(2, "0")}:${minutes
+        return `${hours
+            .toString()
+            .padStart(2, "0")}:${minutes
             .toString()
             .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
     }
@@ -506,6 +519,10 @@ export class Base {
     }
 
     static async removeStorage(keys) {
+        for (let index = 0; index < keys.length; index++) {
+            keys[index] = String(keys[index]);
+        }
+
         if (keys.length > 0) {
             await chrome.storage.local.remove(keys, (data) => {
                 Base.logInfo("Removed keys", keys, "from local storage", data);
@@ -552,19 +569,37 @@ export class Base {
         return promise;
     }
 
+    static async getTabStorage(jsonKey) {
+        let currentTab = await Base.getCurrentTab();
+        let tabStorageValue = await Base.getJsonStorage(currentTab.id, [
+            jsonKey,
+        ]);
+        Base.logDebug(
+            "tabId",
+            currentTab.id,
+            "jsonKey",
+            jsonKey,
+            "tabStorageValue",
+            tabStorageValue
+        );
+        return tabStorageValue;
+    }
+
     static async getJsonStorage(storageKey, jsonKeys = []) {
         if (jsonKeys.length === 0) {
             throw new Error("Please use getStorage method instead.");
         }
+        storageKey = String(storageKey);
+        Base.logDebug("storageKey", storageKey);
 
         let json = await Base.getStorage(storageKey);
-        let value = await Base.#getJsonFieldValue(jsonKeys, json);
+        let value = Base.#getJsonFieldValue(jsonKeys, json);
 
         Base.logDebug("Return storage JSON value...", value);
         return value;
     }
 
-    static async #getJsonFieldValue(keys, json) {
+    static #getJsonFieldValue(keys, json) {
         Base.logDebug("Getting field value", keys, "from", json);
 
         if (Base.isValidJson(json)) {
@@ -582,13 +617,28 @@ export class Base {
         if (jsonKeys.length === 0) {
             throw new Error("Please use setStorage method instead.");
         }
+        storageKey = String(storageKey);
+        Base.logDebug("storageKey", storageKey);
 
         let json = await Base.getStorage(storageKey);
         let storedJson = await Base.#setJsonFieldValue(jsonKeys, value, json);
-        await Base.setStorage(firstKey, storedJson);
+        await Base.setStorage(storageKey, storedJson);
 
         Base.logDebug("Saving storage JSON value...", storedJson);
         return storedJson;
+    }
+
+    static async setTabStorage(jsonKey, value) {
+        let currentTab = await Base.getCurrentTab();
+        Base.logDebug(
+            "tabId",
+            currentTab.id,
+            "jsonKey",
+            jsonKey,
+            "setTabStorageValue",
+            value
+        );
+        return await Base.setJsonStorage(currentTab.id, [jsonKey], value);
     }
 
     static async #setJsonFieldValue(keys, value, json) {
@@ -616,7 +666,7 @@ export class Base {
     }
 
     static async fetchWithTimeout(request) {
-        let requestTimeout = await Base.getJsonStorage("ankiFlashOptions", [
+        let requestTimeout = await Base.getJsonStorage("ankiflashOptions", [
             "requestTimeout",
         ]);
 
@@ -669,6 +719,16 @@ export class Base {
             ? JSON.parse(request.payload)
             : request.payload;
 
+        let commonLogs = [
+            request.method,
+            "URL",
+            request.url,
+            "HEADERS",
+            request.headers,
+            "PAYLOAD",
+            printedPayload,
+        ];
+
         try {
             response = await Base.fetchWithTimeout({
                 url: request.url,
@@ -680,82 +740,58 @@ export class Base {
                     printedResponse = response;
                 } else if (request.respType === Base.RESP_TYPE_ENUM.TEXT) {
                     printedResponse = await response.text();
+                } else if (request.respType === Base.RESP_TYPE_ENUM.BLOB) {
+                    printedResponse = await response.blob();
                 } else {
                     printedResponse = await response.clone().json();
                 }
+
+                commonLogs = commonLogs.concat([
+                    "RESPONSE",
+                    Base.isValidJson(printedResponse)
+                        ? printedResponse
+                        : String(printedResponse).slice(0, 100),
+                ]);
 
                 if (
                     response.ok ||
                     response.status == 200 ||
                     printedResponse.success
                 ) {
-                    Base.logSuccess(
-                        request.method,
-                        "URL",
-                        request.url,
-                        "HEADERS",
-                        request.headers,
-                        "PAYLOAD",
-                        printedPayload,
-                        "RESPONSE",
-                        printedResponse.slice(0, 1000)
-                    );
+                    let currentTab = await Base.getCurrentTab();
+                    if (currentTab.title === "ankiflash Test") {
+                        Base.logSuccess(...commonLogs);
+                    } else {
+                        Base.logDebug(...commonLogs);
+                    }
                 } else {
-                    Base.logError(
-                        request.method,
-                        "URL",
-                        request.url,
-                        "HEADERS",
-                        request.headers,
-                        "PAYLOAD",
-                        printedPayload,
-                        "RESPONSE",
-                        printedResponse
-                    );
+                    Base.logError(...commonLogs);
                 }
             } catch (error) {
                 printedResponse = await response.text();
-                Base.logError(
-                    request.method,
-                    "URL",
-                    request.url,
-                    "HEADERS",
-                    request.headers,
-                    "PAYLOAD",
-                    printedPayload,
+                commonLogs = commonLogs.concat([
                     "RESPONSE",
                     printedResponse,
                     "ERROR",
-                    error
-                );
+                    error,
+                ]);
+                Base.logError(...commonLogs);
             }
         } catch (error) {
-            Base.logError(
-                request.method,
-                "URL",
-                request.url,
-                "HEADERS",
-                request.headers,
-                "PAYLOAD",
-                printedPayload,
-                "RESPONSE",
-                printedResponse,
-                "ERROR",
-                error
-            );
+            Base.logError(...commonLogs, "ERROR", error);
         }
 
         return printedResponse;
     }
 
     static async fetchRetries(request) {
-        let retryTimes = await Base.getJsonStorage("letoOptions", [
+        let retryTimes = await Base.getJsonStorage("ankiflashOptions", [
             "retryTimes",
         ]);
-        let retryInterval = await Base.getJsonStorage("letoOptions", [
+        let retryInterval = await Base.getJsonStorage("ankiflashOptions", [
             "retryInterval",
         ]);
-        let retryCodes = await Base.getJsonStorage("letoOptions", [
+        let retryCodes = await Base.getJsonStorage("ankiflashOptions", [
             "retryCodes",
         ]);
 
@@ -802,13 +838,13 @@ export class Base {
     static async getUrlContent(url) {
         Base.logInfo("JQuery getting HTML content.", url);
 
-        let html = await $.get(url, (data) => {
-            Base.logDebug("Html", data);
+        let content = await $.get(url, (data) => {
+            Base.logDebug("Content", data);
         }).fail((err) => {
             Base.logError("an error has occurred.", err);
         });
 
-        return html;
+        return content;
     }
 
     static async getCookie(cookieDetails) {
@@ -987,8 +1023,22 @@ export class Base {
             active: true,
             currentWindow: true,
         });
+        Base.logDebug("activeTab", activeTab);
 
         return activeTab;
+    }
+
+    static async getCurrentTab() {
+        let promise = await new Promise((resolve, reject) => {
+            chrome.tabs.getCurrent((tab) => {
+                if (chrome.runtime.lastError) {
+                    return reject(chrome.runtime.lastError);
+                }
+                resolve(tab);
+            });
+        });
+
+        return promise;
     }
 
     static async #queryBrowserTabs(queryInfo) {
@@ -1133,7 +1183,7 @@ export class Base {
         ...args
     ) {
         if (retryInterval === 0) {
-            retryInterval = await Base.getJsonStorage("letoOptions", [
+            retryInterval = await Base.getJsonStorage("ankiflashOptions", [
                 "retryInterval",
             ]);
         }
@@ -1206,31 +1256,27 @@ export class Base {
         return hashHex;
     }
 
-    static async downloadFile(filename, text) {
-        var element = document.createElement("a");
-        element.setAttribute(
-            "href",
-            "data:text/plain;charset=utf-8," + encodeURIComponent(text)
-        );
-        element.setAttribute("download", filename);
+    static async downloadTextFile(fileName, text) {
+        let textContent = "data:text/plain;charset=utf-8," + text;
 
-        element.style.display = "none";
-        document.body.appendChild(element);
-
-        element.click();
-        document.body.removeChild(element);
+        await Base.downloadFileContent(fileName, textContent);
     }
 
-    static async exportCsvFile(rows, fileName) {
-        // each row is an array of text cells
+    static async downloadCsvFile(fileName, rows) {
+        // each row in CSV file is an array of cells
         Base.logWarn("Downloading csv file which contains below rows", rows);
 
         let csvContent =
             "data:application/csv;charset=utf-8," +
             rows.map((e) => e.join(",")).join("\n");
 
-        var encodedUri = encodeURI(csvContent);
+        await Base.downloadFileContent(fileName, csvContent);
+    }
+
+    static async downloadFileContent(fileName, fileContent) {
+        var encodedUri = encodeURI(fileContent);
         var link = document.createElement("a");
+        link.style.display = "none";
 
         link.setAttribute("href", encodedUri);
         link.setAttribute("download", fileName);
@@ -1240,5 +1286,29 @@ export class Base {
 
         link.click();
         link.remove();
+    }
+
+    static async chromeDownloadFiles(urls, filename = "") {
+        let downloadInfos = [];
+
+        for (const url of urls) {
+            const partialFilePath =
+                filename || `AnkiFlash/${url.split("/").pop()}`;
+
+            const downloadId = await chrome.downloads.download({
+                url: url,
+                filename: partialFilePath,
+                conflictAction: "overwrite",
+            });
+
+            downloadInfos.push({
+                url: url,
+                filename: partialFilePath,
+                downloadId: downloadId,
+            });
+        }
+
+        Base.logInfo("downloadInfos", downloadInfos);
+        return downloadInfos;
     }
 }

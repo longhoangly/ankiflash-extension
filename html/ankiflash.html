@@ -31,7 +31,7 @@
                         placeholder="Input Your Words"></textarea>
                     <label id="totalLbl" class="counts">Total: 0</label>
 
-                    <fieldset class="border border-secondary rounded p-2">
+                    <fieldset id="translationLbl" class="border border-secondary rounded p-2">
                         <legend class="float-none w-auto mb-0 px-2">Translation</legend>
 
                         <div class="row">
@@ -135,17 +135,16 @@
                         </div>
 
                         <div class="col">
-                            <div class="progress" role="progressbar" aria-label="Generation progress" aria-valuenow="50"
+                            <div class="progress" role="progressbar" aria-label="Generation Progress" aria-valuenow="50"
                                 aria-valuemin="0" aria-valuemax="100">
-                                <div class="progress-bar progress-bar-striped bg-info" style="width: 10%">10%</div>
+                                <div id="progressbar" class="progress-bar progress-bar-striped bg-info"
+                                    style="width: 0%">0%</div>
                             </div>
                         </div>
 
                         <div class="col-auto">
                             <button id="btnCancel" type="button"
                                 class="btn btn-sm btn-outline-light border-secondary">Cancel</button>
-                            <button id="btnDownload" type="button"
-                                class="btn btn-sm btn-secondary border-secondary">Donwload</button>
                         </div>
                     </div>
                 </fieldset>

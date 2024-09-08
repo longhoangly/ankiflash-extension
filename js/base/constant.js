@@ -18,40 +18,26 @@ export class Constant extends Base {
         "This card's content is collected from the following dictionaries: {}";
 
     // OXFORD
-    static OX_WRONG_SPELLING = "Did you spell it correctly?";
-    static OX_WORD_NOT_FOUND =
-        "Oxford Learner's Dictionaries | Find the meanings";
-    static OX_EN_EN_URL =
-        "https://www.oxfordlearnersdictionaries.com/definition/english/{}";
-    static OX_EN_EN_SEARCH_URL =
-        "https://www.oxfordlearnersdictionaries.com/search/english/direct/?q={}";
+    static OX_BASE_URL = "https://www.oxfordlearnersdictionaries.com";
+    static OX_EN_EN_URL = `${Constant.OX_BASE_URL}/definition/english/{}`;
+    static OX_EN_EN_SEARCH_URL = `${Constant.OX_BASE_URL}/search/english/direct/?q={}`;
 
     // LACVIET
-    static LV_WRONG_SPELLING = "Dữ liệu đang được cập nhật";
-    static LV_VN_EN_URL =
-        "http://tratu.coviet.vn/tu-dien-lac-viet.aspx?learn=hoc-tieng-anh&t=V-A&k={}";
-    static LV_VN_FR_URL =
-        "http://tratu.coviet.vn/tu-dien-lac-viet.aspx?learn=hoc-tieng-phap&t=V-F&k={}";
-    static LV_VN_VN_URL =
-        "http://tratu.coviet.vn/tu-dien-lac-viet.aspx?learn=hoc-tieng-phap&t=V-V&k={}";
-    static LV_EN_VN_URL =
-        "http://tratu.coviet.vn/tu-dien-lac-viet.aspx?learn=hoc-tieng-anh&t=A-V&k={}";
-    static LV_FR_VN_URL =
-        "http://tratu.coviet.vn/tu-dien-lac-viet.aspx?learn=hoc-tieng-phap&t=F-V&k={}";
+    static LV_BASE_URL = "http://tratu.coviet.vn";
+    static LV_VN_EN_URL = `${Constant.LV_BASE_URL}/tu-dien-lac-viet.aspx?learn=hoc-tieng-anh&t=V-A&k={}`;
+    static LV_VN_FR_URL = `${Constant.LV_BASE_URL}/tu-dien-lac-viet.aspx?learn=hoc-tieng-phap&t=V-F&k={}`;
+    static LV_VN_VN_URL = `${Constant.LV_BASE_URL}/tu-dien-lac-viet.aspx?learn=hoc-tieng-phap&t=V-V&k={}`;
+    static LV_EN_VN_URL = `${Constant.LV_BASE_URL}/tu-dien-lac-viet.aspx?learn=hoc-tieng-anh&t=A-V&k={}`;
+    static LV_FR_VN_URL = `${Constant.LV_BASE_URL}/tu-dien-lac-viet.aspx?learn=hoc-tieng-phap&t=F-V&k={}`;
 
     // CAMBRIDGE
-    static CB_WRONG_SPELLING = "Did you spell it correctly?";
-    static CB_EN_FR_URL =
-        "https://dictionary.cambridge.org/search/english-french/direct/?q={}";
-    static CB_EN_JP_URL =
-        "https://dictionary.cambridge.org/search/english-japanese/direct/?q={}";
-    static CB_EN_CN_TD_URL =
-        "https://dictionary.cambridge.org/search/english-chinese-traditional/direct/?q={}";
-    static CB_EN_CN_SP_URL =
-        "https://dictionary.cambridge.org/search/english-chinese-simplified/direct/?q={}";
+    static CB_BASE_URL = "https://dictionary.cambridge.org";
+    static CB_EN_FR_URL = `${Constant.CB_BASE_URL}/search/english-french/direct/?q={}`;
+    static CB_EN_JP_URL = `${Constant.CB_BASE_URL}/search/english-japanese/direct/?q={}`;
+    static CB_EN_CN_TD_URL = `${Constant.CB_BASE_URL}/search/english-chinese-traditional/direct/?q={}`;
+    static CB_EN_CN_SP_URL = `${Constant.CB_BASE_URL}/search/english-chinese-simplified/direct/?q={}`;
 
     // COLLINS
-    static CL_WRONG_SPELLING = "Sorry, no results for";
     static CL_FR_EN_URL =
         "https://www.collinsdictionary.com/search/?dictCode=french-english&q={}";
 
@@ -59,9 +45,9 @@ export class Constant extends Base {
     static KT_VNJP_JPVN_URL = "https://kantan.vn/postrequest.ashx";
 
     // JISHO
-    static JS_WORD_NOT_FOUND = "Sorry, couldn't find anything matching";
-    static JS_JP_EN_URL = "https://jisho.org/word/{}";
-    static JS_JP_EN_SEARCH_URL = "https://jisho.org/search/{}";
+    static JS_BASE_URL = "https://jisho.org";
+    static JS_JP_EN_URL = `${Constant.JS_BASE_URL}/word/{}`;
+    static JS_JP_EN_SEARCH_URL = `${Constant.JS_BASE_URL}/search/{}`;
 
     // LANGUAGES (1)
     static ENGLISH = "English";

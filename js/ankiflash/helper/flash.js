@@ -16,6 +16,30 @@ export class Flash {
         return cardInputDto;
     }
 
+    static async downloadFiles(urls, filename = "") {
+        let downloadInfos = [];
+
+        for (const url of urls) {
+            const partialFilePath =
+                filename || `AnkiFlash/${url.split("/").pop()}`;
+
+            const downloadId = await chrome.downloads.download({
+                url: url,
+                filename: partialFilePath,
+                conflictAction: "overwrite",
+            });
+
+            downloadInfos.push({
+                url: url,
+                filename: partialFilePath,
+                downloadId: downloadId,
+            });
+        }
+
+        Common.logInfo("downloadInfos", downloadInfos);
+        return downloadInfos;
+    }
+
     static async buildExamples(exampleStrs, isJapanese = false) {
         let examples = [];
 
@@ -59,27 +83,102 @@ export class Flash {
         return examples.join("");
     }
 
-    static async downloadFiles(urls, filename = "") {
-        let downloadInfos = [];
+    static async buildMeaning(
+        word,
+        wordType,
+        phonetic,
+        meanings,
+        isJapanese = false
+    ) {
+        let strList = [];
 
-        for (const url of urls) {
-            const partialFilePath =
-                filename || `AnkiFlash/${url.split("/").pop()}`;
-
-            const downloadId = await chrome.downloads.download({
-                url: url,
-                filename: partialFilePath,
-                conflictAction: "overwrite",
-            });
-
-            downloadInfos.push({
-                url: url,
-                filename: partialFilePath,
-                downloadId: downloadId,
-            });
+        if (isJapanese) {
+            strList.push('<div class="content-container japan-font">');
+        } else {
+            strList.push('<div class="content-container">');
         }
 
-        Common.logInfo("downloadInfos", downloadInfos);
-        return downloadInfos;
+        strList.push('<h2 class="h">{}</h2>'.format(word.trim()));
+        if (wordType) {
+            strList.push(
+                '<span class="content-type">{}</span>'.format(wordType.trim())
+            );
+        }
+
+        if (phonetic) {
+            strList.push(
+                '<span class="content-phonetic">{}</span>'.format(
+                    phonetic.trim()
+                )
+            );
+        }
+
+        strList.push('<ul class="content-order">');
+        for (const mean of meanings) {
+            if (mean.wordType) {
+                strList.push(
+                    '<h4 class="content-meaning-type"\'>{}</h4>'.format(
+                        mean.wordType.trim()
+                    )
+                );
+                strList.push("</ul>");
+                strList.push('<ul class="content-order">');
+            }
+
+            if (mean.meaning) {
+                strList.push(
+                    '<li class="content-meaning">{}</li>'.format(
+                        mean.meaning.trim()
+                    )
+                );
+            }
+
+            if (mean.subMeaning) {
+                strList.push(
+                    '<div class="content-sub-meaning">{}</div>'.format(
+                        mean.subMeaning.trim()
+                    )
+                );
+            }
+
+            if (mean.examples.length > 0) {
+                strList.push('<ul class="content-circle">');
+
+                if (isJapanese) {
+                    index = 0;
+                    for (example in mean.examples) {
+                        if (index % 2 == 0) {
+                            strList.push(
+                                '<li class="content-example">{}</li>'.format(
+                                    example.trim()
+                                )
+                            );
+                        } else {
+                            strList.push(
+                                '<li class="content-sub-example">{}</li>'.format(
+                                    example.trim()
+                                )
+                            );
+                        }
+                        index += 1;
+                    }
+                } else {
+                    for (const example of mean.examples) {
+                        strList.push(
+                            '<li class="content-example">{}</li>'.format(
+                                example.trim()
+                            )
+                        );
+                    }
+                }
+
+                strList.push("</ul>");
+            }
+        }
+
+        strList.push("</ul>");
+        strList.push("</div>");
+
+        return strList.join("");
     }
 }

@@ -4,7 +4,7 @@ export class Meaning {
     subMeaning;
     examples;
 
-    constructor(meaning, examples) {
+    constructor(meaning, examples = []) {
         (this.meaning = meaning), (this.examples = examples);
     }
 }

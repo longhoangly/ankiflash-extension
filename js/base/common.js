@@ -40,8 +40,32 @@ export class Common extends Constant {
         tags.forEach((tag) => tag.remove());
     }
 
+    static async screenshotActiveTab() {
+        let activeTab = await Common.getActiveTab();
+        let screenshotContent = await chrome.tabs.captureVisibleTab(
+            activeTab.windowId,
+            {
+                format: "jpeg",
+            }
+        );
+
+        let fileNameSubfix = Common.getJsonDate({
+            offsetDate: 0,
+            separator: "_",
+            timezone: +7,
+            onlyDate: false,
+        })
+            .replaceAll(":", "_")
+            .replaceAll(".", "_");
+
+        await Common.chromeDownloadFiles(
+            [screenshotContent],
+            `Ankiflash Screenshots/Chrome_Screenshot_${fileNameSubfix}.JPEG`
+        );
+    }
+
     static async forceRefreshOptions(fieldId) {
-        await Common.setStorage(`${fieldId}OptionsIsForced`, true);
+        await Common.setTabStorage(`${fieldId}OptionsIsForced`, true);
     }
 
     static async convertTimestampToZoneTime(timestamp) {
@@ -53,7 +77,7 @@ export class Common extends Constant {
         let localTimezone = (-1 * date.getTimezoneOffset()) / 60;
         console.debug("localOffset", localTimezone);
 
-        let timezoneStr = await Common.getStorage("timezone");
+        let timezoneStr = await Common.getTabStorage("timezone");
         let timezone = parseInt(timezoneStr);
         console.debug("zoneOffset", timezone);
 
@@ -119,7 +143,7 @@ export class Common extends Constant {
                 await Common.setFieldValue(fieldId, noOptionsString);
             } else {
                 await Common.#setFieldOptions(fieldId, config.options);
-                let storageValue = await Common.getStorage(fieldId);
+                let storageValue = await Common.getTabStorage(fieldId);
 
                 if (
                     !config.options
@@ -138,9 +162,9 @@ export class Common extends Constant {
             let createdKey = `${fieldId}OptionsCreated`;
             let forceKey = `${fieldId}OptionsIsForced`;
 
-            let storageOptions = await Common.getStorage(optionsKey);
-            let created = await Common.getStorage(createdKey);
-            let forceRefreshOptions = await Common.getStorage(forceKey);
+            let storageOptions = await Common.getTabStorage(optionsKey);
+            let created = await Common.getTabStorage(createdKey);
+            let forceRefreshOptions = await Common.getTabStorage(forceKey);
 
             if (
                 force ||
@@ -150,9 +174,9 @@ export class Common extends Constant {
                 Date.now() - created > 24 * 60 * 60 * 1000 // milis
             ) {
                 storageOptions = await config.options(fieldId);
-                await Common.setStorage(optionsKey, storageOptions);
-                await Common.setStorage(createdKey, Date.now());
-                await Common.setStorage(forceKey, false);
+                await Common.setTabStorage(optionsKey, storageOptions);
+                await Common.setTabStorage(createdKey, Date.now());
+                await Common.setTabStorage(forceKey, false);
             }
 
             await Common.#popuplateDataOptions(
@@ -170,14 +194,14 @@ export class Common extends Constant {
         } else if (config.handler) {
             handler = config.handler;
         }
-        Common.logInfo(
+        Common.logDebug(
             `Mapping handler '${handler.name}' for field ${field.id}`
         );
 
         let value = await Common.getFieldValue(field.id, field.default);
         if (config.type === "input") {
             // INPUT or SELECT or TEXTAREA
-            Common.logInfo(
+            Common.logDebug(
                 `Setting value '${value}' for INPUT field ${field.id}`
             );
 
@@ -190,7 +214,7 @@ export class Common extends Constant {
             $(`#${field.id}`).on("input", { fieldId: field.id }, handler);
         } else if (config.type === "radio") {
             // RADIO
-            Common.logInfo(
+            Common.logDebug(
                 `Setting value '${value}' for RADIO field ${field.id}`
             );
 
@@ -201,7 +225,7 @@ export class Common extends Constant {
             $(`input[name='${field.id}'][value='${value}']`).click();
         } else if (config.type === "checked") {
             // CHECKBOX
-            Common.logInfo(
+            Common.logDebug(
                 `Setting value '${value}' for CHECKBOX field ${field.id}`
             );
 
@@ -416,24 +440,25 @@ export class Common extends Constant {
 
         if (input !== undefined && input.length >= 3) {
             let histories =
-                (await Common.getStorage(`${fieldId}-history`)) || [];
+                (await Common.getTabStorage(`${fieldId}-history`)) || [];
 
             histories = histories.reverse();
             if (!histories.includes(input) && input !== undefined) {
                 histories.push(input);
             }
 
-            if (histories.length > 30) {
+            if (histories.length > 100) {
                 histories = histories.slice(
-                    histories.length - 20,
+                    histories.length - 100,
                     histories.length
                 );
             }
             histories = histories.reverse();
-            await Common.setStorage(`${fieldId}-history`, histories);
+            await Common.setTabStorage(`${fieldId}-history`, histories);
         }
 
-        let histories = (await Common.getStorage(`${fieldId}-history`)) || [];
+        let histories =
+            (await Common.getTabStorage(`${fieldId}-history`)) || [];
         await Common.#createAutoCompleteField(fieldId, histories);
     }
 
@@ -445,7 +470,7 @@ export class Common extends Constant {
                 source: source,
                 select: async (event, ui) => {
                     $(`#${fieldId}`).val(ui.item.label);
-                    await Common.setStorage(fieldId, ui.item.label);
+                    await Common.setTabStorage(fieldId, ui.item.label);
                     Common.logInfo(fieldId, `[${ui.item.label}]`);
                 },
             })
@@ -453,7 +478,7 @@ export class Common extends Constant {
                 $(`#${fieldId}`).autocomplete("search", $(`#${fieldId}`).val());
             })
             .on("blur", async () => {
-                $(`#${fieldId}`).val(await Common.getStorage(fieldId));
+                $(`#${fieldId}`).val(await Common.getTabStorage(fieldId));
             });
     }
 
@@ -463,7 +488,7 @@ export class Common extends Constant {
 
     static async inputChangedHandler(event) {
         let fieldId = event.data.fieldId;
-        Common.logInfo("event.data.fieldId >", fieldId);
+        Common.logDebug("event.data.fieldId >", fieldId);
 
         let tagName =
             $(`#${fieldId}`).prop("tagName") ||
@@ -489,10 +514,9 @@ export class Common extends Constant {
         if (tagName === "INPUT" && type === "radio") {
             input = $(`input[name='${fieldId}']:checked`).val();
         }
+        await Common.setTabStorage(fieldId, input);
 
-        await Common.setStorage(`${fieldId}`, input);
-
-        let output = await Common.getStorage(`${fieldId}`);
+        let output = await Common.getTabStorage(fieldId);
         Common.logInfo("Saved storage...", `[${fieldId}]`, `[${output}]`);
 
         if (Common.AUTO_COMPLETE_FIELD_IDS.includes(fieldId)) {
@@ -517,16 +541,16 @@ export class Common extends Constant {
 
             // CHECKBOX value
             if (tagName === "INPUT" && type === "checkbox") {
-                Common.logInfo("set checkbox value", fieldId, value);
+                Common.logDebug("set checkbox value", fieldId, value);
                 $(`#${fieldId}`).prop("checked", value);
                 await Common.triggerInputChanged(fieldId);
             }
 
             // RADIO value
             if (tagName === "INPUT" && type === "radio") {
-                Common.logInfo("set radio value", fieldId, value);
+                Common.logDebug("set radio value", fieldId, value);
                 $(`input[name='${fieldId}'][value='${value}']`).click();
-                await Common.setStorage(fieldId, value);
+                await Common.setTabStorage(fieldId, value);
             }
         }
 
@@ -535,19 +559,19 @@ export class Common extends Constant {
         }
     }
 
-    static async getFieldValue(key, defaultValue = "") {
-        let storageValue = await Common.getStorage(key);
+    static async getFieldValue(fieldId, defaultValue = "") {
+        let storageValue = await Common.getTabStorage(fieldId);
 
-        if (storageValue === undefined || ["routeDate"].includes(key)) {
-            await Common.setStorage(key, defaultValue);
+        if (storageValue === undefined || ["routeDate"].includes(fieldId)) {
+            await Common.setTabStorage(fieldId, defaultValue);
         }
 
-        return await Common.getStorage(key);
+        return await Common.getTabStorage(fieldId);
     }
 
     static async presetOptions(
         jsonPath = "../../data/default-options.json",
-        storageConfigName = "ankiFlashOptions"
+        storageConfigName = "ankiflashOptions"
     ) {
         Common.logInfo(`loading config file ${jsonPath} into the storage...`);
         let jsonConfig = await Common.fetchJsonContent(jsonPath);
@@ -555,19 +579,19 @@ export class Common extends Constant {
     }
 
     static async blockTraffics() {
-        let isBlocked = await Common.getJsonStorage("ankiFlashOptions", [
+        let isBlocked = await Common.getJsonStorage("ankiflashOptions", [
             "traffic",
             "isBlocked",
         ]);
 
-        let trafficUrls = await Common.getJsonStorage("ankiFlashOptions", [
+        let trafficUrls = await Common.getJsonStorage("ankiflashOptions", [
             "traffic",
             "baseUrls",
         ]);
 
         trafficUrls.forEach(async (domain) => {
             if (isBlocked) {
-                let ruleId = parseInt(Common.randomInt(99999999));
+                let ruleId = Common.randomInt(1000, 99999999);
                 Common.logInfo("Add blocking rules", domain, ruleId);
 
                 chrome.declarativeNetRequest.updateDynamicRules({
@@ -596,8 +620,7 @@ export class Common extends Constant {
     }
 
     static async clearNetworkRules() {
-        const currentRules =
-            await chrome.declarativeNetRequest.getDynamicRules();
+        const currentRules = await chrome.declarativeNetRequest.getDynamicRules();
         Common.logWarn("currentRules", currentRules);
 
         await chrome.declarativeNetRequest.updateDynamicRules({
@@ -606,7 +629,7 @@ export class Common extends Constant {
     }
 
     static async setCookie(ruleId, cookieKey, baseUrl, extraCookies = []) {
-        let cookieString = await Common.getStorage(cookieKey);
+        let cookieString = await Common.getTabStorage(cookieKey);
 
         if (extraCookies.length > 0) {
             let extraCookieString = extraCookies
