@@ -1,3 +1,4 @@
+// "string1 {} string2".format("and")
 String.prototype.format = function () {
     let i = 0,
         args = arguments;
@@ -21,10 +22,10 @@ export class Base {
 
     static uuid() {
         let dt = Date.now();
-        let uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+        const uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
             /[xy]/g,
             (c) => {
-                let r = (dt + Math.random() * 16) % 16 | 0;
+                const r = (dt + Math.random() * 16) % 16 | 0;
                 dt = Math.floor(dt / 16);
                 return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
             }
@@ -33,12 +34,24 @@ export class Base {
         return uuid;
     }
 
-    static isNotNull(str) {
-        return str !== "" && str !== undefined && str !== null;
+    static isNotNull(value) {
+        return (
+            value !== "" &&
+            value !== undefined &&
+            value !== "undefined" &&
+            value !== null &&
+            value !== "null"
+        );
     }
 
-    static isNull(str) {
-        return str === "" || str === undefined || str === null;
+    static isNull(value) {
+        return (
+            value === "" ||
+            value === undefined ||
+            value === "undefined" ||
+            value === null ||
+            value === "null"
+        );
     }
 
     static isValidJson(value) {
@@ -48,74 +61,68 @@ export class Base {
 
         try {
             JSON.parse(value);
-            if (typeof value === "boolean" || value === "") {
-                return false;
-            } else {
-                return true;
-            }
+            return !(typeof value === "boolean" || value === "");
         } catch (err) {
             Base.logDebug("Error occurred", err);
             return false;
         }
     }
 
-    static randomString(
-        length,
-        includedChars = false,
-        includedSpecials = false
-    ) {
-        let characters = "123456789";
+    static randomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return parseInt(Math.floor(Math.random() * (max - min)) + min);
+    }
 
-        if (includedChars) {
+    static randomString(params) {
+        params.strLength = params.strLength || 10;
+        params.includedChars = params.includedChars || false;
+        params.includedSpecials = params.includedSpecials || false;
+
+        let characters = "123456789";
+        if (params.includedChars) {
             characters +=
                 "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
         }
 
-        if (includedSpecials) {
+        if (params.includedSpecials) {
             characters += "!@#$%^&*()_+-={};':\"|.<>?";
         }
 
-        let random = "";
-        for (let i = 0; i < length; i++) {
+        let randStr = "";
+        for (let i = 0; i < params.strLength; i++) {
             if (i === 1) {
                 characters += "0";
             }
 
-            random += characters.charAt(
+            randStr += characters.charAt(
                 Math.floor(Math.random() * characters.length)
             );
         }
 
-        return random;
+        return randStr;
     }
 
-    static randomInt(min, max) {
-        min = Math.ceil(min);
-        max = Math.floor(max);
-
-        return parseInt(Math.floor(Math.random() * (max - min)) + min);
+    static randomItem(array) {
+        return array[Math.floor(Math.random() * array.length)];
     }
 
-    static randomItems(arr, offset = 2) {
-        if (offset > arr.length) {
+    static randomItems(array, size = 2) {
+        if (size > array.length) {
             throw Error(
-                `Input array ${arr} length is shorter than the number of random element ${offset}`
+                `Input array ${array} length is shorter than the number of random element ${size}`
             );
         }
 
-        let resultArr = [];
-        for (let index = 0; index < offset; index++) {
-            let randIdx = Math.floor(Math.random() * arr.length);
+        let resultArray = [];
+        for (let index = 0; index < size; index++) {
+            let randIdx = Math.floor(Math.random() * array.length);
 
-            resultArr.push(arr[randIdx]);
-            arr.splice(randIdx, 1);
+            resultArray.push(array[randIdx]);
+            array.splice(randIdx, 1);
         }
 
-        return resultArr;
-    }
-
-    static randomItem(arr) {
-        return arr[Math.floor(Math.random() * arr.length)];
+        return resultArray;
     }
 
     static showElement(selector) {
@@ -134,18 +141,18 @@ export class Base {
         }
     }
 
-    static setDisplayAttribute(selector, attr) {
-        $(selector).attr("style", `display: ${attr};`);
+    static setDisplayAttribute(selector, value) {
+        $(selector).attr("style", `display: ${value};`);
     }
 
-    static confirmAlert(msg) {
-        if (!confirm(msg)) {
-            throw new Error("You choose Cancel option!!");
+    static confirmBox(message) {
+        if (!confirm(message)) {
+            throw new Error("Stopped because you chose Cancel option!");
         }
     }
 
-    static stopAlert(msg) {
-        throw new Error(`Stoooop execution here!! Reason: ${msg}`);
+    static stopExec(reason) {
+        throw new Error(`Stopped execution here! Reason: ${reason}`);
     }
 
     static jsonToString(json, isFormatted = false) {
@@ -159,10 +166,10 @@ export class Base {
             } else {
                 json = JSON.stringify(JSON.parse(json));
             }
-        } catch (err) {
+        } catch (error) {
             Base.logDebug(
-                "Cannot convert JSON object to String...Please re-check json object...",
-                err
+                "Cannot convert JSON object to string...Please re-check JSON object...",
+                error
             );
         } finally {
             return json;
@@ -175,7 +182,7 @@ export class Base {
             json = JSON.parse(jsonStr);
         } catch (error) {
             Base.logDebug(
-                "Cannot convert String to JSON object...Please re-check json format...",
+                "Cannot convert string to JSON object...Please re-check JSON format...",
                 error
             );
         } finally {
@@ -183,21 +190,19 @@ export class Base {
         }
     }
 
-    static distinctArray(arr) {
-        return arr
+    static distinctArray(originArray) {
+        return originArray
             .filter(Boolean)
             .filter((value, index, array) => array.indexOf(value) === index);
     }
 
-    // Compare two arrays
-    static compareArraysIgnoreOrder(a, b) {
-        if (a.length !== b.length) return false;
-        const uniqueValues = new Set([...a, ...b]);
+    static compareArraysNoOrder(arrayOne, arrayTwo) {
+        if (arrayOne.length !== arrayTwo.length) return false;
+        const uniqueValues = new Set([...arrayOne, ...arrayTwo]);
 
         for (const v of uniqueValues) {
-            const aCount = a.filter((e) => e === v).length;
-            const bCount = b.filter((e) => e === v).length;
-
+            const aCount = arrayOne.filter((e) => e === v).length;
+            const bCount = arrayTwo.filter((e) => e === v).length;
             if (aCount !== bCount) return false;
         }
 
@@ -249,8 +254,7 @@ export class Base {
     static #decorLogMsg(args) {
         let msgConfig = "%c ";
         args.forEach((arg) => {
-            const type = typeof arg;
-            switch (type) {
+            switch (typeof arg) {
                 case "bigint":
                     msgConfig += "%o ";
                     break;
@@ -277,26 +281,26 @@ export class Base {
         return msgConfig;
     }
 
-    static getWeekNo(offset) {
-        let currentdate = new Date();
-        var oneJan = new Date(currentdate.getFullYear(), 0, 1);
+    static weekNumber(offset) {
+        const currentdate = new Date();
 
-        var numberOfDays =
+        const oneJan = new Date(currentdate.getFullYear(), 0, 1);
+
+        const numberOfDays =
             (currentdate.getTime() - oneJan.getTime()) / (24 * 60 * 60 * 1000);
 
-        var weekNo =
+        const weekNo =
             Math.ceil((currentdate.getDay() + 1 + numberOfDays) / 7) + offset;
 
+        const weekNoStr = `${currentdate.getFullYear()}-W${String(
+            weekNo
+        ).padStart(2, "0")}`;
+
         Base.logWarn(
-            `The week number of the date (${currentdate}) is ${currentdate.getFullYear()}-W${String(
-                weekNo
-            ).padStart(2, "0")}.`
+            `The week number of the date (${currentdate}) is ${weekNoStr}.`
         );
 
-        return `${currentdate.getFullYear()}-W${String(weekNo).padStart(
-            2,
-            "0"
-        )}`;
+        return weekNoStr;
     }
 
     static objToUrlParams(obj) {
@@ -314,7 +318,7 @@ export class Base {
     }
 
     static objToUrlParamsV2(obj) {
-        var str = "";
+        let str = "";
 
         for (const key in obj) {
             if (str != "") {
@@ -329,7 +333,7 @@ export class Base {
     static getDaysArray(start, end) {
         // From: "2021-06-09" to "2021-06-10"
         for (
-            var arr = [], dt = new Date(start);
+            let arr = [], dt = new Date(start);
             dt <= end;
             dt.setDate(dt.getDate() + 1)
         ) {
@@ -342,7 +346,7 @@ export class Base {
         timeConfig = {
             offsetDate: 0,
             separator: "-",
-            // Get current date by Singapore timezone
+            // get current date by Singapore timezone
             timezone: +7,
             onlyDate: true,
         }
@@ -372,7 +376,7 @@ export class Base {
     static requiredField(varValue, varName) {
         Base.logDebug(varValue, "... is value of required field ...", varName);
 
-        if (varValue !== false && !varValue) {
+        if (Base.isNull(varValue)) {
             throw new Error(
                 `{${varName}} is required field, but actual value is {${varValue}}`
             );
@@ -451,12 +455,12 @@ export class Base {
     static toReadableTime(timeInSecond) {
         timeInSecond = Math.floor(timeInSecond);
 
-        let seconds = timeInSecond % 60;
+        const seconds = timeInSecond % 60;
 
-        let timeInMinute = (timeInSecond - seconds) / 60;
-        let minutes = timeInMinute % 60;
+        const timeInMinute = (timeInSecond - seconds) / 60;
+        const minutes = timeInMinute % 60;
 
-        let hours = (timeInMinute - minutes) / 60;
+        const hours = (timeInMinute - minutes) / 60;
 
         return `${hours
             .toString()
@@ -465,56 +469,56 @@ export class Base {
             .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
     }
 
-    static getMedian(arr) {
-        if (arr.length === 0) {
+    static getMedian(array) {
+        if (array.length === 0) {
             return undefined;
         }
 
-        arr.sort((a, b) => a - b);
-        const middleIndex = Math.floor(arr.length / 2);
+        array.sort((a, b) => a - b);
+        const middleIndex = Math.floor(array.length / 2);
 
-        if (arr.length % 2 === 0) {
-            return (arr[middleIndex - 1] + arr[middleIndex]) / 2;
+        if (array.length % 2 === 0) {
+            return (array[middleIndex - 1] + array[middleIndex]) / 2;
         } else {
-            return arr[middleIndex];
+            return array[middleIndex];
         }
     }
 
-    static getPercentageValue(arr, percent) {
-        if (arr.length === 0) {
+    static getPercentageValue(array, percent) {
+        if (array.length === 0) {
             return undefined;
         }
 
-        arr.sort((a, b) => a - b);
-        const lowIndex = parseInt(arr.length * percent);
-        const upIndex = Math.floor(arr.length * percent);
+        array.sort((a, b) => a - b);
+        const lowIndex = parseInt(array.length * percent);
+        const upIndex = Math.floor(array.length * percent);
 
-        return (arr[lowIndex] + arr[upIndex]) / 2;
+        return (array[lowIndex] + array[upIndex]) / 2;
     }
 
-    static async setElementColor(selector, colorCode) {
+    static setElementColor(selector, colorCode) {
         // $(selector).css("cssText", `color: ${colorCode} !important`);
         // $(selector).css({"font-style": "italic", "font-weight": "bold","text-decoration": "underline"});
-
         let cssObj = { color: colorCode };
         $(selector).css(cssObj);
     }
 
-    static async disableElement(selector) {
+    static disableElement(selector) {
         $(selector).prop("disabled", true);
     }
 
-    static async enableElement(selector) {
+    static enableElement(selector) {
         $(selector).prop("disabled", false);
     }
 
-    static async isNumber(value) {
+    static isNumber(value) {
         if (value == null || value == undefined) {
             return false;
         }
 
         value = String(value);
         let matches = value.match(/^\d+(\.\d+){0,1}$/g);
+
         return matches !== null && matches.length > 0;
     }
 
@@ -590,9 +594,8 @@ export class Base {
             throw new Error("Please use getStorage method instead.");
         }
         storageKey = String(storageKey);
-        Base.logDebug("storageKey", storageKey);
-
         let json = await Base.getStorage(storageKey);
+
         let value = Base.#getJsonFieldValue(jsonKeys, json);
 
         Base.logDebug("Return storage JSON value...", value);
@@ -618,9 +621,8 @@ export class Base {
             throw new Error("Please use setStorage method instead.");
         }
         storageKey = String(storageKey);
-        Base.logDebug("storageKey", storageKey);
-
         let json = await Base.getStorage(storageKey);
+
         let storedJson = await Base.#setJsonFieldValue(jsonKeys, value, json);
         await Base.setStorage(storageKey, storedJson);
 
@@ -785,13 +787,13 @@ export class Base {
     }
 
     static async fetchRetries(request) {
-        let retryTimes = await Base.getJsonStorage("ankiflashOptions", [
+        const retryTimes = await Base.getJsonStorage("ankiflashOptions", [
             "retryTimes",
         ]);
-        let retryInterval = await Base.getJsonStorage("ankiflashOptions", [
+        const retryInterval = await Base.getJsonStorage("ankiflashOptions", [
             "retryInterval",
         ]);
-        let retryCodes = await Base.getJsonStorage("ankiflashOptions", [
+        const retryCodes = await Base.getJsonStorage("ankiflashOptions", [
             "retryCodes",
         ]);
 
@@ -816,8 +818,8 @@ export class Base {
     static async fetchJsonContent(jsonPath) {
         Base.logInfo("JS navitve fetching JSON file.", jsonPath);
 
-        let response = await fetch(jsonPath);
-        let json = await response.json();
+        const response = await fetch(jsonPath);
+        const json = await response.json();
         Base.logSuccess("Json", json);
 
         return json;
@@ -859,16 +861,18 @@ export class Base {
     }
 
     static async getCookies(cookieDetails, filters = {}) {
+        // filters = { domain: "xxx" }
+
         let cookies = await chrome.cookies.getAll(cookieDetails);
 
         if (cookies !== null && cookies != undefined) {
-            Base.logDebug("Found raw cookies", cookieDetails, filters, cookies);
+            Base.logDebug("Found raw cookies", cookieDetails, cookies);
 
             cookies = cookies.filter((c) => {
                 let rt = true;
 
                 for (const key of Object.keys(filters)) {
-                    rt = rt && filters[key] && filters[key].includes(c[key]); // filters.domain
+                    rt = rt && filters[key] && filters[key].includes(c[key]);
                 }
 
                 return rt;
@@ -887,7 +891,9 @@ export class Base {
     }
 
     static async removeCookies(cookieDetails, filters = {}) {
-        let cookies = await Base.getCookies(cookieDetails, filters);
+        // filters = { domain: "xxx" }
+
+        const cookies = await Base.getCookies(cookieDetails, filters);
         Base.logInfo(
             "Going to remove cookies",
             cookieDetails,
@@ -898,7 +904,8 @@ export class Base {
         let removeResults = [];
         for (const cookie of cookies) {
             let details = {
-                url: cookieDetails.url || filters.domain, // in case of partitioned cookie, cookieDetails will not have url, then use filter.domain
+                // In case of partitioned cookie, cookieDetails will not have url, then use filter.domain
+                url: cookieDetails.url || filters.domain,
                 name: cookie.name,
             };
 
@@ -914,9 +921,11 @@ export class Base {
     }
 
     static async getCookieString(cookieDetails, filters = {}) {
-        let cookies = await Base.getCookies(cookieDetails, filters);
+        // filters = { domain: "xxx" }
 
-        let cookieString = cookies
+        const cookies = await Base.getCookies(cookieDetails, filters);
+
+        const cookieString = cookies
             .map((c) => `${c.name}=${c.value}`)
             .join("; ");
 
@@ -968,9 +977,9 @@ export class Base {
 
     static async openThenCloseLoadedTab(url, isActive = false) {
         Base.logInfo("Opening URL", url);
-        let activeTab = await Base.getActiveTab();
+        const activeTab = await Base.getActiveTab();
 
-        let createdTab = await Base.#createBrowserTab({
+        const createdTab = await Base.#createBrowserTab({
             url: url,
             active: isActive,
             index: parseInt(activeTab.index) + 1,
@@ -996,7 +1005,7 @@ export class Base {
 
     static async openNewTab(url, isActive = false) {
         Base.logInfo("Opening URL", url);
-        let activeTab = await Base.getActiveTab();
+        const activeTab = await Base.getActiveTab();
 
         await Base.#createBrowserTab({
             url: url,
@@ -1006,7 +1015,7 @@ export class Base {
     }
 
     static async #createBrowserTab(createProperties) {
-        let promise = await new Promise((resolve, reject) => {
+        const promise = await new Promise((resolve, reject) => {
             chrome.tabs.create(createProperties, (createdTab) => {
                 if (chrome.runtime.lastError) {
                     return reject(chrome.runtime.lastError);
@@ -1019,7 +1028,7 @@ export class Base {
     }
 
     static async getActiveTab() {
-        let [activeTab] = await Base.#queryBrowserTabs({
+        const [activeTab] = await Base.#queryBrowserTabs({
             active: true,
             currentWindow: true,
         });
@@ -1029,7 +1038,7 @@ export class Base {
     }
 
     static async getCurrentTab() {
-        let promise = await new Promise((resolve, reject) => {
+        const promise = await new Promise((resolve, reject) => {
             chrome.tabs.getCurrent((tab) => {
                 if (chrome.runtime.lastError) {
                     return reject(chrome.runtime.lastError);
@@ -1042,7 +1051,7 @@ export class Base {
     }
 
     static async #queryBrowserTabs(queryInfo) {
-        let promise = await new Promise((resolve, reject) => {
+        const promise = await new Promise((resolve, reject) => {
             chrome.tabs.query(queryInfo, (tabs) => {
                 if (chrome.runtime.lastError) {
                     return reject(chrome.runtime.lastError);
@@ -1086,50 +1095,43 @@ export class Base {
         // Common.logError("result", result); // true
 
         let flattenJsonA = await Base.flattenJSON(jsonA);
-        const sortObjectA = await Base.sortObject(flattenJsonA);
+        const sortObjectA = Base.sortObject(flattenJsonA);
 
         let flattenJsonB = await Base.flattenJSON(jsonB);
-        const sortObjectB = await Base.sortObject(flattenJsonB);
+        const sortObjectB = Base.sortObject(flattenJsonB);
 
         return JSON.stringify(sortObjectA) === JSON.stringify(sortObjectB);
     }
 
-    static async sortObject(obj) {
+    static sortObject(obj) {
         return Object.keys(obj)
             .sort()
             .reduce((r, k) => ((r[k] = obj[k]), r), {});
     }
 
-    static async removeJsonByKeys(obj = {}, keyList = []) {
+    static filterJsonByKeys(obj = {}, keyList = []) {
+        // keyList --- list of keys to keep in obj
         for (let key in obj) {
             if (!Array.isArray(obj) && !keyList.includes(key)) {
                 delete obj[key];
             } else {
                 if (typeof obj[key] === "object") {
-                    await Base.removeJsonByKeys(obj[key], keyList);
+                    Base.filterJsonByKeys(obj[key], keyList);
                 }
             }
         }
         return obj;
     }
 
-    static async simpleEscape(str) {
-        return str !== null ? str.replaceAll('"', '\\"') : null;
-    }
-
-    static async simpleUnescape(str) {
-        return str !== null ? str.replaceAll('\\"', '"') : null;
-    }
-
-    static async encodeUriBase64(str) {
+    static encodeUriBase64(str) {
         return btoa(encodeURI(str));
     }
 
-    static async decodeUriBase64(str) {
+    static decodeUriBase64(str) {
         return decodeURI(atob(str));
     }
 
-    static async copyTextToClipboard(selector) {
+    static copyTextToClipboard(selector) {
         let copyText = document.querySelector(selector);
 
         copyText.select();
@@ -1140,7 +1142,7 @@ export class Base {
     }
 
     static async extSendMessageToBrowserTab(tabId, msgObj) {
-        let promise = await new Promise((resolve, reject) => {
+        const promise = await new Promise((resolve, reject) => {
             chrome.tabs.sendMessage(tabId, msgObj, (response) => {
                 Base.logWarn("response from browser tab", response);
 
@@ -1155,7 +1157,7 @@ export class Base {
     }
 
     static async tabSendMessageToBackground(msgObj) {
-        let promise = await new Promise((resolve, reject) => {
+        const promise = await new Promise((resolve, reject) => {
             chrome.runtime.sendMessage(msgObj, (response) => {
                 Base.logWarn("response from background", response);
 
@@ -1256,26 +1258,26 @@ export class Base {
         return hashHex;
     }
 
-    static async downloadTextFile(fileName, text) {
-        let textContent = "data:text/plain;charset=utf-8," + text;
-
-        await Base.downloadFileContent(fileName, textContent);
+    static downloadTextFile(fileName, text) {
+        const textContent = "data:text/plain;charset=utf-8," + text;
+        Base.#downloadFileContent(fileName, textContent);
     }
 
-    static async downloadCsvFile(fileName, rows) {
+    static downloadCsvFile(fileName, rows) {
         // each row in CSV file is an array of cells
         Base.logWarn("Downloading csv file which contains below rows", rows);
 
-        let csvContent =
+        const csvContent =
             "data:application/csv;charset=utf-8," +
             rows.map((e) => e.join(",")).join("\n");
 
-        await Base.downloadFileContent(fileName, csvContent);
+        Base.#downloadFileContent(fileName, csvContent);
     }
 
-    static async downloadFileContent(fileName, fileContent) {
-        var encodedUri = encodeURI(fileContent);
-        var link = document.createElement("a");
+    static #downloadFileContent(fileName, fileContent) {
+        const encodedUri = encodeURI(fileContent);
+
+        let link = document.createElement("a");
         link.style.display = "none";
 
         link.setAttribute("href", encodedUri);

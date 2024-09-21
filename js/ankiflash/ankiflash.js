@@ -32,7 +32,6 @@ export class AnkiFlash {
                 ),
                 relatedWords: await Common.getTabStorage("relatedWords"),
                 isOnline: await Common.getTabStorage("isOnline"),
-                isAutoDict: await Common.getTabStorage("isAutoDict"),
                 dictionaries: {
                     wordTypesDict: await Common.getTabStorage("wordTypesDict"),
                     phoneticsDict: await Common.getTabStorage("phoneticsDict"),
@@ -70,18 +69,8 @@ export class AnkiFlash {
     static async setupLayout() {
         let fieldConfigs = [
             {
-                type: "input",
-                handler: AnkiFlash.#translationChangedHandler,
                 fields: [{ id: "source", default: Constant.ENGLISH }],
-                triggerOptionsIds: [
-                    "target",
-                    Constant.WORD_TYPES_DICT,
-                    Constant.PHONETICS_DICT,
-                    Constant.EXAMPLES_DICT,
-                    Constant.SOUNDS_DICT,
-                    Constant.IMAGES_DICT,
-                    Constant.MEANING_DICT,
-                ],
+                handler: Common.inputChangedHandler,
                 options: [
                     {
                         value: Constant.VIETNAMESE,
@@ -100,80 +89,63 @@ export class AnkiFlash {
                         text: Constant.JAPANESE,
                     },
                 ],
-            },
-            {
-                type: "input",
-                handler: AnkiFlash.#translationChangedHandler,
-                fields: [{ id: "target", default: Constant.ENGLISH }],
-                triggerOptionsIds: [
-                    Constant.WORD_TYPES_DICT,
-                    Constant.PHONETICS_DICT,
-                    Constant.EXAMPLES_DICT,
-                    Constant.SOUNDS_DICT,
-                    Constant.IMAGES_DICT,
-                    Constant.MEANING_DICT,
+                triggers: [
+                    { id: "target", options: true, handler: true },
+                    { id: "mainDict", options: true, handler: true },
                 ],
-                options: AnkiFlash.#getTargetAsOptions,
             },
             {
-                type: "input",
-                handler: AnkiFlash.#textboxChangedHandler,
+                fields: [{ id: "target", default: Constant.ENGLISH }],
+                handler: Common.inputChangedHandler,
+                options: AnkiFlash.#getTargetAsOptions,
+                triggers: [{ id: "mainDict", options: true, handler: true }],
+            },
+            {
+                fields: [{ id: "mainDict", default: Constant.OXFORD }],
+                handler: AnkiFlash.#mainDictChangedHandler,
+                options: AnkiFlash.#getDictionaryAsOptions,
+            },
+            {
+                fields: [
+                    { id: "isOnline", default: true },
+                    { id: "relatedWords", default: true },
+                ],
+                handler: Common.inputChangedHandler,
+            },
+            {
                 fields: [
                     { id: "inputTxt" },
                     { id: "outputTxt" },
                     { id: "failureTxt" },
                 ],
-            },
-            {
-                type: "checked",
-                handler: Common.inputChangedHandler,
-                fields: [
-                    { id: "relatedWords", default: true },
-                    { id: "isOnline", default: true },
-                    {
-                        handler: AnkiFlash.#isAutoDictChangedHandler,
-                        id: "isAutoDict",
-                        default: true,
-                    },
-                ],
-            },
-            {
-                type: "input",
-                handler: Common.inputChangedHandler,
-                fields: [
-                    { id: Constant.WORD_TYPES_DICT, default: Constant.OXFORD },
-                    { id: Constant.PHONETICS_DICT, default: Constant.OXFORD },
-                    { id: Constant.EXAMPLES_DICT, default: Constant.OXFORD },
-                    { id: Constant.SOUNDS_DICT, default: Constant.OXFORD },
-                    { id: Constant.IMAGES_DICT, default: Constant.OXFORD },
-                    { id: Constant.MEANING_DICT, default: Constant.OXFORD },
-                ],
-                forceGetOptions: true,
-                options: AnkiFlash.#getDictionaryAsOptions,
+                handler: AnkiFlash.#textboxChangedHandler,
             },
         ];
-        await Common.configDataFields(fieldConfigs);
+        await Common.configUniversalFields(fieldConfigs);
 
+        // Reset value of output and failure boxes
         for (const fieldId of ["outputTxt", "failureTxt"]) {
             await Common.setFieldValue(fieldId, "");
         }
 
+        // init counters' values
         for (const fieldId of ["inputTxt", "outputTxt", "failureTxt"]) {
             await AnkiFlash.#calculateCounters(fieldId);
         }
 
-        await AnkiFlash.#displayDictMapping();
+        $("#outputTxt").attr("rows", 11);
+        $("#failureTxt").attr("rows", 10);
+        $("#failureTxt").attr("style", "margin-top: -2px");
     }
 
     static async #textboxChangedHandler(event) {
         await Common.inputChangedHandler(event);
-
-        let fieldId = event.data.fieldId;
+        const fieldId = event.data.fieldId;
         await AnkiFlash.#calculateCounters(fieldId);
     }
 
     static async #calculateCounters(fieldId) {
-        let txtLines = (await Common.getTabStorage(fieldId))
+        const txtLines = ((await Common.getTabStorage(fieldId)) || "")
             .split("\n")
             .filter(Boolean);
 
@@ -190,43 +162,8 @@ export class AnkiFlash {
         }
     }
 
-    static async #displayDictMapping() {
-        let isAutoDict = await Common.getTabStorage("isAutoDict");
-        if (isAutoDict) {
-            $("#dictMapping").hide();
-            $("#outputTxt").attr("rows", 9);
-            $("#failureTxt").attr("rows", 8);
-            $("#failureTxt").attr("style", "margin-top: 2px");
-            $("#translationLbl").attr("style", "margin-top: 0px");
-
-            for (const dict of [
-                "wordTypesDict",
-                "phoneticsDict",
-                "examplesDict",
-                "soundsDict",
-                "imagesDict",
-                "meaningDict",
-            ]) {
-                let dictOptions = await AnkiFlash.#getDictionaryAsOptions(dict);
-                Common.logDebug(dict, dictOptions);
-                await Common.setFieldValue(dict, dictOptions[0].value, true);
-            }
-        } else {
-            $("#dictMapping").show();
-            $("#outputTxt").attr("rows", 16);
-            $("#failureTxt").attr("rows", 16);
-            $("#failureTxt").attr("style", "margin-top: 0px");
-            $("#translationLbl").attr("style", "margin-top: 5px");
-        }
-    }
-
-    static async #isAutoDictChangedHandler(event) {
-        await Common.inputChangedHandler(event);
-        await AnkiFlash.#displayDictMapping();
-    }
-
-    static async #getTargetAsOptions() {
-        let source = await Common.getTabStorage("source");
+    static async #getTargetAsOptions(event) {
+        const source = await Common.getTabStorage("source");
         return Constant.SUPPORTED_TRANSLATIONS.filter(
             (t) => t.translation.source === source
         ).map((t) => {
@@ -234,49 +171,36 @@ export class AnkiFlash {
         });
     }
 
-    static async #getDictionaryAsOptions(fieldId) {
-        let translation = new Translation(
+    static async #getDictionaryAsOptions(event) {
+        const translation = new Translation(
             await Common.getTabStorage("source"),
             await Common.getTabStorage("target")
         );
 
-        let [dictionaries] = Constant.SUPPORTED_TRANSLATIONS.filter((t) =>
+        const [dictionaries] = Constant.SUPPORTED_TRANSLATIONS.filter((t) =>
             t.translation.equals(translation)
         ).map((t) => t.dictionaries);
 
-        return dictionaries
-            .filter((d) => d.fields.includes(fieldId))
-            .map((d) => {
-                return { value: d.name, text: d.name };
-            });
+        return dictionaries.map((d) => {
+            return { value: d.name, text: d.name };
+        });
     }
 
-    static async #translationChangedHandler(event) {
-        await Common.inputChangedHandler(event);
+    static async #mainDictChangedHandler(event) {
+        const mainDict = await Common.inputChangedHandler(event);
 
-        let translation = new Translation(
-            await Common.getTabStorage("source"),
-            await Common.getTabStorage("target")
-        );
+        const isRelatedWordSupported = [
+            Constant.JISHO,
+            Constant.KANTAN,
+            Constant.OXFORD,
+            Constant.WIKTIONARY,
+        ].includes(mainDict);
 
-        let isRelatedWordSupported = translation.belongTo([
-            // JISHO
-            new Translation(Constant.JAPANESE, Constant.ENGLISH),
-            // KANTAN
-            new Translation(Constant.JAPANESE, Constant.VIETNAMESE),
-            new Translation(Constant.VIETNAMESE, Constant.JAPANESE),
-            // OXFORD
-            new Translation(Constant.ENGLISH, Constant.ENGLISH),
-            // WIKITIONARY
-            new Translation(Constant.VIETNAMESE, Constant.VIETNAMESE),
-        ]);
-
-        if (!isRelatedWordSupported) {
+        if (isRelatedWordSupported) {
+            Common.enableElement("#relatedWords");
+        } else {
             Common.setFieldValue("relatedWords", false);
             Common.disableElement("#relatedWords");
-        } else {
-            Common.setFieldValue("relatedWords", true);
-            Common.enableElement("#relatedWords");
         }
     }
 }

@@ -166,7 +166,7 @@ export class Oxford {
         this.cardInputDto.oxfordDocument = await Common.fetchNeutral({
             method: "GET",
             respType: Common.RESP_TYPE_ENUM.TEXT,
-            url: Constant.OX_EN_EN_URL.format(
+            url: Constant.OX_EN_EN_SEARCH_URL.format(
                 this.cardInputDto.standardizedWord.wordId
             ),
         });
@@ -200,12 +200,11 @@ export class Oxford {
             "https://www.oxfordlearnersdictionaries.com/external/images"
         );
 
-        oxfordCss = oxfordCss.replaceAll(
+        this.cardInputDto.oxfordCss = oxfordCss.replaceAll(
             "div.collapse .body .unbox:first-of-type",
             "div.collapse .body .unbox"
         );
 
-        this.cardInputDto.oxfordCss = oxfordCss;
-        return oxfordCss;
+        return this.cardInputDto.oxfordCss;
     }
 }

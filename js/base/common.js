@@ -1,55 +1,78 @@
 import { Constant } from "./constant.js";
 
 export class Common extends Constant {
-    static addHyperLink(innerHTML, hyperLink) {
-        let divShipment = document.createElement("a");
-        divShipment.className = "removeId";
-        divShipment.innerHTML = innerHTML;
-        divShipment.setAttribute("href", hyperLink);
-        divShipment.setAttribute("target", "_blank");
-        divShipment.style.fontWeight = "bold";
-        divShipment.style.margin = "10px 20px 10px 20px";
-        divShipment.style.cursor = "pointer";
-        divShipment.style.display = "block";
-        document.body.firstElementChild.appendChild(divShipment);
+    static UI_FIELDS = {};
+
+    static addHyperLink(params) {
+        params.fieldId = params.fieldId || "";
+        params.className = params.className || "";
+        Common.requiredField(params.innerHTML, "params.innerHTML");
+        Common.requiredField(params.hyperLink, "params.hyperLink");
+
+        let aElement = document.createElement("a");
+        aElement.className = params.className;
+        aElement.innerHTML = params.innerHTML;
+        aElement.setAttribute("href", params.hyperLink);
+        aElement.setAttribute("target", "_blank");
+
+        aElement.style.fontWeight = "bold";
+        aElement.style.margin = "10px 20px 10px 20px";
+        aElement.style.cursor = "pointer";
+        aElement.style.display = "block";
+
+        if (params.fieldId) {
+            document.getElementById(`#${params.fieldId}`).appendChild(aElement);
+        } else {
+            document.body.firstElementChild.appendChild(aElement);
+        }
     }
 
-    static addImage(caption, imgSrc) {
+    static addImage(params) {
+        params.fieldId = params.fieldId || "";
+        params.className = params.className || "";
+        Common.requiredField(params.caption, "params.caption");
+        Common.requiredField(params.imgSrc, "params.imgSrc");
+
         let divCon = document.createElement("div");
-        divCon.className = "removeId";
+        divCon.className = params.className;
         divCon.style.display = "inline";
 
         let span = document.createElement("span");
-        span.innerHTML = caption;
-        span.className = "img_label removeId";
+        span.innerHTML = params.caption;
+        span.className = params.className;
         span.style.color = "DarkOrange";
         divCon.appendChild(span);
 
         let img = new Image();
-        img.src = imgSrc;
-        img.className = "ship_img_scan removeId";
+        img.src = params.imgSrc;
+        img.className = params.className;
         img.style.background = "white";
         img.style.marginBottom = "10px";
         divCon.appendChild(img);
 
-        document.body.firstElementChild.appendChild(divCon);
+        if (fieldId) {
+            document.getElementById(`#${fieldId}`).appendChild(divCon);
+        } else {
+            document.body.firstElementChild.appendChild(divCon);
+        }
     }
 
-    static removeElements(selector = ".removeId") {
-        let tags = document.body.querySelectorAll(selector);
+    static removeElements(selector) {
+        const tags = document.body.querySelectorAll(selector);
         tags.forEach((tag) => tag.remove());
     }
 
     static async screenshotActiveTab() {
-        let activeTab = await Common.getActiveTab();
-        let screenshotContent = await chrome.tabs.captureVisibleTab(
+        const activeTab = await Common.getActiveTab();
+
+        const shotContent = await chrome.tabs.captureVisibleTab(
             activeTab.windowId,
             {
                 format: "jpeg",
             }
         );
 
-        let fileNameSubfix = Common.getJsonDate({
+        const suffix = Common.getJsonDate({
             offsetDate: 0,
             separator: "_",
             timezone: +7,
@@ -59,383 +82,207 @@ export class Common extends Constant {
             .replaceAll(".", "_");
 
         await Common.chromeDownloadFiles(
-            [screenshotContent],
-            `Ankiflash Screenshots/Chrome_Screenshot_${fileNameSubfix}.JPEG`
+            [shotContent],
+            `Ankiflash_Screenshots/Chrome_Screenshot_${suffix}.JPEG`
         );
     }
 
-    static async forceRefreshOptions(fieldId) {
-        await Common.setTabStorage(`${fieldId}OptionsIsForced`, true);
-    }
-
-    static async convertTimestampToZoneTime(timestamp) {
-        console.debug("local stamp", timestamp);
+    static convertTimestampToDate(timestamp, timezone) {
+        // timezone = "+8";
 
         let date = new Date(timestamp);
-        console.debug("localTime", date.toLocaleString());
+        Common.logDebug("localtime", date.toLocaleString());
 
         let localTimezone = (-1 * date.getTimezoneOffset()) / 60;
-        console.debug("localOffset", localTimezone);
-
-        let timezoneStr = await Common.getTabStorage("timezone");
-        let timezone = parseInt(timezoneStr);
-        console.debug("zoneOffset", timezone);
+        Common.logDebug("localtimezone", localTimezone);
 
         date.setHours(date.getHours() - localTimezone);
-        date.setHours(date.getHours() + timezone);
-        console.debug("zoneTime", date.toLocaleString());
+        date.setHours(date.getHours() + parseInt(timezone));
+        Common.logDebug("zonetime", date.toLocaleString());
 
         return date;
     }
 
-    static async convertTimestampToZoneStamp(timestamp) {
-        let date = await Common.convertTimestampToZoneTime(timestamp);
-        console.debug("zone stamp", date.getTime());
+    static convertTimestampToZonestamp(timestamp, timezone) {
+        // timezone = "+8";
+
+        const date = Common.convertTimestampToDate(timestamp, timezone);
+        Common.logDebug("zonestamp", date.getTime());
+
         return date.getTime();
     }
 
-    static async alertHtml(
-        message,
-        isSuccess = true,
-        uiId = "alert",
-        timeout = 5
-    ) {
-        if (isSuccess) {
-            $(`#${uiId}`).attr("class", "alert alert-success");
+    static async bootsAlert(params) {
+        params.isSuccess = params.isSuccess || true;
+        params.fieldId = params.fieldId || "alert";
+        params.timeout = params.timeout || 5;
+        Common.requiredField(params.message, "params.message");
+
+        if (params.isSuccess) {
+            $(`#${params.fieldId}`).attr("class", "alert alert-success");
         } else {
-            $(`#${uiId}`).attr("class", "alert alert-danger");
+            $(`#${params.fieldId}`).attr("class", "alert alert-danger");
         }
 
-        $(`#${uiId}`).html(message);
-        $(`#${uiId}`).attr("style", "display: block;");
+        $(`#${params.fieldId}`).html(params.message);
+        $(`#${params.fieldId}`).attr("style", "display: block;");
 
-        await Common.delayTime(timeout * 1000);
-        $(`#${uiId}`).attr("style", "display: none;");
+        await Common.delayTime(params.timeout * 1000);
+        $(`#${params.fieldId}`).attr("style", "display: none;");
     }
 
-    static async configDataFields(fieldConfigs) {
-        for (const config of fieldConfigs) {
-            for (const field of config.fields) {
-                let value = await Common.#configFieldHandler(config, field);
-                if (field.autocomplete) {
-                    Common.#addOptionAutoCompleteField(value, field.id);
-                    Common.AUTO_COMPLETE_FIELD_IDS.push(field.id);
-                }
+    static #getFieldType(fieldId) {
+        const tagName =
+            $(`#${fieldId}`).prop("tagName") ||
+            $(`[name='${fieldId}']`).prop("tagName");
+        const type =
+            $(`#${fieldId}`).prop("type") ||
+            $(`[name='${fieldId}']`).prop("type");
 
-                await Common.#popuplateDataOptions(
-                    config,
-                    field.id,
-                    config.forceGetOptions
-                );
-                Common.#configFieldTriggers(config, field, fieldConfigs);
-                Common.#configFieldOptionsTriggers(config, field, fieldConfigs);
+        let fieldType = "TEXTBOX";
+        if (tagName === "SELECT") {
+            fieldType = "DROPDOWN";
+        }
+        if (tagName === "INPUT" && type === "checkbox") {
+            fieldType = "CHECKBOX";
+        }
+        if (tagName === "INPUT" && type === "radio") {
+            fieldType = "RADIO";
+        }
+        Common.logDebug(`field ${fieldId} type is ${fieldType}`);
+
+        return fieldType;
+    }
+
+    static async configUniversalFields(configs) {
+        for (const config of configs) {
+            for (let field of config.fields) {
+                field.handler = field.handler || config.handler;
+                field.isStartupHandler =
+                    field.isStartupHandler || config.isStartupHandler || true;
+
+                field.options = field.options || config.options;
+                field.isStorageOptions =
+                    field.isStorageOptions || config.isStorageOptions || true;
+
+                field.type = Common.#getFieldType(field.id);
+                field.autocomplete =
+                    field.autocomplete || config.autocomplete || false;
+                field.triggers = field.triggers || config.triggers || [];
+
+                Common.UI_FIELDS[`${field.id}Config`] = field;
+            }
+        }
+
+        for (const [_, field] of Object.entries(Common.UI_FIELDS)) {
+            for (let trigger of field.triggers) {
+                trigger.optionsIndex = Object.keys(trigger).indexOf("options");
+                trigger.handlerIndex = Object.keys(trigger).indexOf("handler");
+
+                const triggerField = Common.UI_FIELDS[`${trigger.id}Config`];
+                trigger.field = triggerField;
+            }
+        }
+
+        for (const [_, field] of Object.entries(Common.UI_FIELDS)) {
+            Common.logDebug("Field config", field);
+
+            // init options (before init value)
+            await Common.#configFieldOptions(field);
+
+            // init value (have to be later than init options)
+            let fieldValue = await Common.getTabStorage(field.id);
+            if (fieldValue === undefined) {
+                fieldValue = field.default;
+            }
+            await Common.setFieldValue(field.id, fieldValue);
+
+            // init handler
+            switch (field.type) {
+                case "CHECKBOX":
+                    $(`#${field.id}`).click(async () => {
+                        await field.handler({
+                            data: { fieldId: field.id },
+                        });
+                        await Common.#configFieldTriggers(field.triggers);
+                    });
+                    break;
+                case "RADIO":
+                    await $(`input[name='${field.id}']`).change(async () => {
+                        await field.handler({
+                            data: { fieldId: field.id },
+                        });
+                        await Common.#configFieldTriggers(field.triggers);
+                    });
+                    break;
+                default:
+                    $(`#${field.id}`).on("input", async () => {
+                        await field.handler({
+                            data: { fieldId: field.id },
+                        });
+                        await Common.#configFieldTriggers(field.triggers);
+                    });
+                    break;
+            }
+
+            // startup handler
+            if (field.isStartupHandler) {
+                await field.handler({ data: { fieldId: field.id } });
             }
         }
     }
 
-    static async #popuplateDataOptions(config, fieldId, force = false) {
-        if (config.options != undefined && Array.isArray(config.options)) {
-            if (config.options.length === 0) {
-                let noOptionsString = "No Optionsss";
-                await Common.#setFieldOptions(fieldId, [
-                    { value: noOptionsString, text: noOptionsString },
-                ]);
-                await Common.setFieldValue(fieldId, noOptionsString);
-            } else {
-                await Common.#setFieldOptions(fieldId, config.options);
-                let storageValue = await Common.getTabStorage(fieldId);
-
-                if (
-                    !config.options
-                        .map((o) => String(o.value))
-                        .includes(String(storageValue))
-                ) {
-                    storageValue =
-                        config.options.length > 0
-                            ? config.options[config.options.length - 1].value
-                            : "";
-                }
-                await Common.setFieldValue(fieldId, storageValue);
-            }
-        } else if (config.options != undefined) {
-            let optionsKey = `${fieldId}Options`;
-            let createdKey = `${fieldId}OptionsCreated`;
-            let forceKey = `${fieldId}OptionsIsForced`;
-
+    static async #configFieldOptions(source) {
+        if (Array.isArray(source.options)) {
+            await Common.#setFieldOptions(source.id, source.options);
+        } else if (source.options) {
+            let optionsKey = `${source.id}Options`;
             let storageOptions = await Common.getTabStorage(optionsKey);
+
+            let createdKey = `${source.id}OptionsCreated`;
             let created = await Common.getTabStorage(createdKey);
-            let forceRefreshOptions = await Common.getTabStorage(forceKey);
 
             if (
-                force ||
-                forceRefreshOptions ||
-                storageOptions === undefined ||
+                !storageOptions ||
+                source.isStorageOptions ||
                 // refresh options list after one day
-                Date.now() - created > 24 * 60 * 60 * 1000 // milis
+                Date.now() - created > 24 * 60 * 60 * 1000
             ) {
-                storageOptions = await config.options(fieldId);
+                storageOptions = await source.options({
+                    data: { fieldId: source.id },
+                });
                 await Common.setTabStorage(optionsKey, storageOptions);
                 await Common.setTabStorage(createdKey, Date.now());
-                await Common.setTabStorage(forceKey, false);
             }
-
-            await Common.#popuplateDataOptions(
-                { options: storageOptions },
-                fieldId
-            );
+            await Common.#setFieldOptions(source.id, storageOptions);
         }
     }
 
-    // the field updates trigger its handler
-    static async #configFieldHandler(config, field) {
-        let handler = Common.inputChangedHandler;
-        if (field.handler) {
-            handler = field.handler;
-        } else if (config.handler) {
-            handler = config.handler;
-        }
-        Common.logDebug(
-            `Mapping handler '${handler.name}' for field ${field.id}`
-        );
-
-        let value = await Common.getFieldValue(field.id, field.default);
-        if (config.type === "input") {
-            // INPUT or SELECT or TEXTAREA
-            Common.logDebug(
-                `Setting value '${value}' for INPUT field ${field.id}`
-            );
-
-            let tagName = $(`#${field.id}`).prop("tagName").toLowerCase();
-            if (tagName === "textarea") {
-                $(`#${field.id}`).html(value);
-            } else {
-                $(`#${field.id}`).val(value);
-            }
-            $(`#${field.id}`).on("input", { fieldId: field.id }, handler);
-        } else if (config.type === "radio") {
-            // RADIO
-            Common.logDebug(
-                `Setting value '${value}' for RADIO field ${field.id}`
-            );
-
-            await $(`input[name='${field.id}']`).change(
-                { fieldId: field.id },
-                handler
-            );
-            $(`input[name='${field.id}'][value='${value}']`).click();
-        } else if (config.type === "checked") {
-            // CHECKBOX
-            Common.logDebug(
-                `Setting value '${value}' for CHECKBOX field ${field.id}`
-            );
-
-            $(`#${field.id}`).prop("checked", value);
-            $(`#${field.id}`).click({ fieldId: field.id }, handler);
-        } else {
-            throw new Error(`Field type ${config.type} is not supported!`);
-        }
-
-        if (config.isStartupTriggered || field.isStartupTriggered) {
-            await handler({ data: { fieldId: field.id } });
-        }
-
-        return value;
-    }
-
-    // the field updates trigger other fields' handlers
-    static async #configFieldTriggers(config, field, fieldConfigs) {
-        let triggerHandlerIds =
-            field.triggerHandlerIds || config.triggerHandlerIds;
-
-        let triggers = [];
-        if (triggerHandlerIds && triggerHandlerIds.length > 0) {
-            Common.logWarn(
-                `Field ${
-                    field.id
-                } will trigger updates for '${triggerHandlerIds.join(
-                    ","
-                )}' fields`
-            );
-
-            for (const triggerId of triggerHandlerIds) {
-                let [triggerConfig] = fieldConfigs.filter((c) => {
-                    return c.fields
-                        .map((f) => {
-                            return f.id;
-                        })
-                        .includes(triggerId);
-                });
-
-                let [triggerField] = triggerConfig.fields.filter((f) => {
-                    return f.id === triggerId;
-                });
-
-                let triggerHandler = Common.inputChangedHandler;
-                if (triggerField.handler) {
-                    triggerHandler = triggerField.handler;
-                } else if (triggerConfig.handler) {
-                    triggerHandler = triggerConfig.handler;
+    static async #configFieldTriggers(triggers) {
+        for (const trigger of triggers) {
+            if (trigger.handlerIndex < trigger.optionsIndex) {
+                if (trigger.handler) {
+                    await trigger.field.handler({
+                        data: { fieldId: trigger.id },
+                    });
                 }
-
-                triggers.push({
-                    triggerId: triggerId,
-                    triggerHandler: triggerHandler,
-                });
-            }
-            Common.logWarn(field.id, "triggers", triggers);
-        }
-
-        for (const trigger of triggers) {
-            Common.logWarn(
-                `Changes from '${field.id}' triggers ${trigger.triggerHandler.name}`
-            );
-
-            let time = 0;
-            if (config.type === "input") {
-                // INPUT or SELECT or TEXTAREA
-                $(`#${field.id}`).on("input", { fieldId: field.id }, () => {
-                    // Reset the timer
-                    clearTimeout(time);
-                    time = setTimeout(() => {
-                        // Enter code here or a execute function.
-                        trigger.triggerHandler({
-                            data: { fieldId: trigger.triggerId },
-                        });
-                    }, 100);
-                });
-            } else if (config.type === "radio") {
-                // RADIO
-                await $(`input[name='${field.id}']`).change(
-                    { fieldId: field.id },
-                    () => {
-                        // Reset the timer
-                        clearTimeout(time);
-                        time = setTimeout(() => {
-                            // Enter code here or a execute function.
-                            trigger.triggerHandler({
-                                data: { fieldId: trigger.triggerId },
-                            });
-                        }, 100);
-                    }
-                );
-            } else if (config.type === "checked") {
-                // CHECKBOX
-                $(`#${field.id}`).click({ fieldId: field.id }, () => {
-                    // Reset the timer
-                    clearTimeout(time);
-                    time = setTimeout(() => {
-                        // Enter code here or a execute function.
-                        trigger.triggerHandler({
-                            data: { fieldId: trigger.triggerId },
-                        });
-                    }, 100);
-                });
+                if (trigger.options) {
+                    await Common.#configFieldOptions(trigger.field);
+                }
             } else {
-                throw new Error(`Field type ${config.type} is not supported!`);
+                if (trigger.options) {
+                    await Common.#configFieldOptions(trigger.field);
+                }
+                if (trigger.handler) {
+                    await trigger.field.handler({
+                        data: { fieldId: trigger.id },
+                    });
+                }
             }
         }
     }
 
-    // the field updates trigger other field's options updates accordingly
-    static async #configFieldOptionsTriggers(config, field, fieldConfigs) {
-        let triggerOptionsIds =
-            field.triggerOptionsIds || config.triggerOptionsIds;
-
-        let triggers = [];
-        if (triggerOptionsIds && triggerOptionsIds.length > 0) {
-            Common.logWarn(
-                `Field ${
-                    field.id
-                } will trigger updates for '${triggerOptionsIds.join(
-                    ","
-                )}' fields`
-            );
-
-            for (const triggerId of triggerOptionsIds) {
-                let [triggerConfig] = fieldConfigs.filter((c) => {
-                    return c.fields
-                        .map((f) => {
-                            return f.id;
-                        })
-                        .includes(triggerId);
-                });
-
-                triggers.push({
-                    triggerId: triggerId,
-                    triggerConfig: triggerConfig,
-                });
-            }
-            Common.logWarn(field.id, "triggers", triggers);
-        }
-
-        for (const trigger of triggers) {
-            Common.logWarn(
-                `Changes from '${field.id}' triggers ${trigger.triggerId}`
-            );
-
-            let time = 0;
-            if (config.type === "input") {
-                // INPUT or SELECT or TEXTAREA
-                $(`#${field.id}`).on("input", { fieldId: field.id }, () => {
-                    // Reset the timer
-                    clearTimeout(time);
-                    time = setTimeout(async () => {
-                        // Enter code here or a execute function.
-                        await Common.#popuplateDataOptions(
-                            trigger.triggerConfig,
-                            trigger.triggerId,
-                            true
-                        );
-                    }, 100);
-                });
-            } else if (config.type === "radio") {
-                // RADIO
-                await $(`input[name='${field.id}']`).change(
-                    { fieldId: field.id },
-                    () => {
-                        // Reset the timer
-                        clearTimeout(time);
-                        time = setTimeout(async () => {
-                            // Enter code here or a execute function.
-                            await Common.#popuplateDataOptions(
-                                trigger.triggerConfig,
-                                trigger.triggerId,
-                                true
-                            );
-                        }, 100);
-                    }
-                );
-            } else if (config.type === "checked") {
-                // CHECKBOX
-                $(`#${field.id}`).click({ fieldId: field.id }, () => {
-                    // Reset the timer
-                    clearTimeout(time);
-                    time = setTimeout(async () => {
-                        // Enter code here or a execute function.
-                        await Common.#popuplateDataOptions(
-                            trigger.triggerConfig,
-                            trigger.triggerId,
-                            true
-                        );
-                    }, 100);
-                });
-            } else {
-                throw new Error(`Field type ${config.type} is not supported!`);
-            }
-        }
-    }
-
-    static async #setFieldOptions(fieldId, options) {
-        $(`#${fieldId}`).find("option").remove();
-        for (let option of options) {
-            $("<option/>")
-                .val(option.value)
-                .html(option.text)
-                .appendTo(`#${fieldId}`);
-        }
-    }
-
-    static async #addOptionAutoCompleteField(input, fieldId) {
+    static async #autoCompleteFieldHandler(input, fieldId) {
         Common.logInfo("Setup autocomplete field", fieldId);
 
         if (input !== undefined && input.length >= 3) {
@@ -482,91 +329,82 @@ export class Common extends Constant {
             });
     }
 
-    static async triggerInputChanged(fieldId) {
-        return await Common.inputChangedHandler({ data: { fieldId: fieldId } });
+    static async #setFieldOptions(fieldId, options) {
+        if (options.length === 0) {
+            options = [{ value: "Not Available", text: "Not Available" }];
+            await Common.setFieldValue(fieldId, undefined);
+            Common.disableElement(`#${fieldId}`);
+        } else {
+            let storageValue = await Common.getTabStorage(fieldId);
+            if (
+                !options
+                    .map((o) => String(o.value))
+                    .includes(String(storageValue))
+            ) {
+                storageValue = options[options.length - 1].value;
+            }
+            await Common.setFieldValue(fieldId, storageValue);
+            Common.enableElement(`#${fieldId}`);
+        }
+
+        $(`#${fieldId}`).find("option").remove();
+        for (const option of options) {
+            $("<option/>")
+                .val(option.value)
+                .html(option.text)
+                .appendTo(`#${fieldId}`);
+        }
     }
 
     static async inputChangedHandler(event) {
-        let fieldId = event.data.fieldId;
-        Common.logDebug("event.data.fieldId >", fieldId);
+        const fieldId = event.data.fieldId;
+        Common.logWarn("event.data.fieldId >", fieldId);
 
-        let tagName =
-            $(`#${fieldId}`).prop("tagName") ||
-            $(`[name='${fieldId}']`).prop("tagName");
-
-        let type =
-            $(`#${fieldId}`).prop("type") ||
-            $(`[name='${fieldId}']`).prop("type");
-
-        let input = $(`#${fieldId}`).val();
-
-        // DROPDOWN value
-        if (tagName === "SELECT") {
-            input = $(`#${fieldId} option:selected`).val();
-        }
-
-        // CHECKBOX value
-        if (tagName === "INPUT" && type === "checkbox") {
-            input = $(`#${fieldId}`).prop("checked");
-        }
-
-        // RADIO value
-        if (tagName === "INPUT" && type === "radio") {
-            input = $(`input[name='${fieldId}']:checked`).val();
+        let input;
+        const fieldType = Common.#getFieldType(fieldId);
+        switch (fieldType) {
+            case "CHECKBOX":
+                input = $(`#${fieldId}`).prop("checked");
+                break;
+            case "RADIO":
+                input = $(`input[name='${fieldId}']:checked`).val();
+                break;
+            case "DROPDOWN":
+                input = $(`#${fieldId} option:selected`).val();
+                break;
+            default:
+                input = $(`#${fieldId}`).val();
+                break;
         }
         await Common.setTabStorage(fieldId, input);
+        Common.logInfo("Set storage...", `[${fieldId}]`, `[${input}]`);
 
         let output = await Common.getTabStorage(fieldId);
-        Common.logInfo("Saved storage...", `[${fieldId}]`, `[${output}]`);
+        Common.logDebug("Get storage...", `[${fieldId}]`, `[${output}]`);
 
-        if (Common.AUTO_COMPLETE_FIELD_IDS.includes(fieldId)) {
-            await Common.#addOptionAutoCompleteField(input, fieldId);
+        const field = Common.UI_FIELDS[`${fieldId}Config`];
+        if (field.autocomplete) {
+            await Common.#autoCompleteFieldHandler(input, fieldId);
         }
 
         return input;
     }
 
-    static async setFieldValue(fieldId, value, isEventFired = false) {
-        await $(`#${fieldId}`).val(value);
-        let setValue = await Common.triggerInputChanged(fieldId);
-
-        if (setValue !== value) {
-            let tagName =
-                $(`#${fieldId}`).prop("tagName") ||
-                $(`[name='${fieldId}']`).prop("tagName");
-
-            let type =
-                $(`#${fieldId}`).prop("type") ||
-                $(`[name='${fieldId}']`).prop("type");
-
-            // CHECKBOX value
-            if (tagName === "INPUT" && type === "checkbox") {
-                Common.logDebug("set checkbox value", fieldId, value);
+    static async setFieldValue(fieldId, value) {
+        const fieldType = Common.#getFieldType(fieldId);
+        switch (fieldType) {
+            case "CHECKBOX":
                 $(`#${fieldId}`).prop("checked", value);
-                await Common.triggerInputChanged(fieldId);
-            }
-
-            // RADIO value
-            if (tagName === "INPUT" && type === "radio") {
-                Common.logDebug("set radio value", fieldId, value);
+                break;
+            case "RADIO":
                 $(`input[name='${fieldId}'][value='${value}']`).click();
-                await Common.setTabStorage(fieldId, value);
-            }
+                break;
+            default:
+                await $(`#${fieldId}`).val(value);
+                break;
         }
-
-        if (isEventFired) {
-            $(`#${fieldId}`).trigger("input");
-        }
-    }
-
-    static async getFieldValue(fieldId, defaultValue = "") {
-        let storageValue = await Common.getTabStorage(fieldId);
-
-        if (storageValue === undefined || ["routeDate"].includes(fieldId)) {
-            await Common.setTabStorage(fieldId, defaultValue);
-        }
-
-        return await Common.getTabStorage(fieldId);
+        await Common.setTabStorage(fieldId, value);
+        $(`#${fieldId}`).trigger("input");
     }
 
     static async presetOptions(

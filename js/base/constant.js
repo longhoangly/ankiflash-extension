@@ -3,7 +3,6 @@ import { Translation } from "../ankiflash/dto/translation.js";
 
 export class Constant extends Base {
     //=====FRAMEWORK=====
-
     static TODAY = Constant.getJsonDate();
     static AUTO_COMPLETE_FIELD_IDS = [];
     static FINISHED_MSG = "===>>>>>>> Finished Execution ===>>>>>>>";
@@ -19,16 +18,11 @@ export class Constant extends Base {
 
     // OXFORD
     static OX_BASE_URL = "https://www.oxfordlearnersdictionaries.com";
-    static OX_EN_EN_URL = `${Constant.OX_BASE_URL}/definition/english/{}`;
     static OX_EN_EN_SEARCH_URL = `${Constant.OX_BASE_URL}/search/english/direct/?q={}`;
 
     // LACVIET
     static LV_BASE_URL = "http://tratu.coviet.vn";
-    static LV_VN_EN_URL = `${Constant.LV_BASE_URL}/tu-dien-lac-viet.aspx?learn=hoc-tieng-anh&t=V-A&k={}`;
-    static LV_VN_FR_URL = `${Constant.LV_BASE_URL}/tu-dien-lac-viet.aspx?learn=hoc-tieng-phap&t=V-F&k={}`;
-    static LV_VN_VN_URL = `${Constant.LV_BASE_URL}/tu-dien-lac-viet.aspx?learn=hoc-tieng-phap&t=V-V&k={}`;
-    static LV_EN_VN_URL = `${Constant.LV_BASE_URL}/tu-dien-lac-viet.aspx?learn=hoc-tieng-anh&t=A-V&k={}`;
-    static LV_FR_VN_URL = `${Constant.LV_BASE_URL}/tu-dien-lac-viet.aspx?learn=hoc-tieng-phap&t=F-V&k={}`;
+    static LV_SEARCH_URL = `${Constant.LV_BASE_URL}/ajax/TraTu.Util.AjaxFunction,App_Code.ashx?_method=GetComplete&_session=no`;
 
     // CAMBRIDGE
     static CB_BASE_URL = "https://dictionary.cambridge.org";
@@ -38,11 +32,12 @@ export class Constant extends Base {
     static CB_EN_CN_SP_URL = `${Constant.CB_BASE_URL}/search/english-chinese-simplified/direct/?q={}`;
 
     // COLLINS
-    static CL_FR_EN_URL =
-        "https://www.collinsdictionary.com/search/?dictCode=french-english&q={}";
+    static CL_BASE_URL = "https://www.collinsdictionary.com";
+    static CL_FR_EN_URL = `${Constant.CL_BASE_URL}/search/?dictCode=french-english&q={}`;
 
     // KANTAN
-    static KT_VNJP_JPVN_URL = "https://kantan.vn/postrequest.ashx";
+    static KT_BASE_URL = "https://kantan.vn";
+    static KT_VNJP_JPVN_URL = `${Constant.KT_BASE_URL}/postrequest.ashx`;
 
     // JISHO
     static JS_BASE_URL = "https://jisho.org";
@@ -67,14 +62,6 @@ export class Constant extends Base {
     static KANTAN = "Kantan";
     static JISHO = "Jisho";
 
-    // FIELDS (3)
-    static WORD_TYPES_DICT = "wordTypesDict";
-    static PHONETICS_DICT = "phoneticsDict";
-    static EXAMPLES_DICT = "examplesDict";
-    static SOUNDS_DICT = "soundsDict";
-    static IMAGES_DICT = "imagesDict";
-    static MEANING_DICT = "meaningDict";
-
     // TRANSLATIONS (3)
     static SUPPORTED_TRANSLATIONS = [
         // ENGLISH ---> xxx
@@ -83,14 +70,6 @@ export class Constant extends Base {
             dictionaries: [
                 {
                     name: Constant.OXFORD,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
                 },
             ],
         },
@@ -99,14 +78,6 @@ export class Constant extends Base {
             dictionaries: [
                 {
                     name: Constant.LACVIET,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
                 },
             ],
         },
@@ -115,14 +86,6 @@ export class Constant extends Base {
             dictionaries: [
                 {
                     name: Constant.CAMBRIDGE,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
                 },
             ],
         },
@@ -131,14 +94,6 @@ export class Constant extends Base {
             dictionaries: [
                 {
                     name: Constant.CAMBRIDGE,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
                 },
             ],
         },
@@ -147,14 +102,6 @@ export class Constant extends Base {
             dictionaries: [
                 {
                     name: Constant.CAMBRIDGE,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
                 },
             ],
         },
@@ -163,31 +110,29 @@ export class Constant extends Base {
             dictionaries: [
                 {
                     name: Constant.CAMBRIDGE,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
                 },
             ],
         },
         // VIETNAMESE ---> xxx
         {
+            translation: new Translation(
+                Constant.VIETNAMESE,
+                Constant.VIETNAMESE
+            ),
+            dictionaries: [
+                {
+                    name: Constant.LACVIET,
+                },
+                {
+                    name: Constant.WIKTIONARY,
+                },
+            ],
+        },
+        {
             translation: new Translation(Constant.VIETNAMESE, Constant.ENGLISH),
             dictionaries: [
                 {
                     name: Constant.LACVIET,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
                 },
             ],
         },
@@ -196,14 +141,6 @@ export class Constant extends Base {
             dictionaries: [
                 {
                     name: Constant.LACVIET,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
                 },
             ],
         },
@@ -215,44 +152,6 @@ export class Constant extends Base {
             dictionaries: [
                 {
                     name: Constant.KANTAN,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
-                },
-            ],
-        },
-        {
-            translation: new Translation(
-                Constant.VIETNAMESE,
-                Constant.VIETNAMESE
-            ),
-            dictionaries: [
-                {
-                    name: Constant.LACVIET,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
-                },
-                {
-                    name: Constant.WIKTIONARY,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
                 },
             ],
         },
@@ -262,14 +161,6 @@ export class Constant extends Base {
             dictionaries: [
                 {
                     name: Constant.LACVIET,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
                 },
             ],
         },
@@ -278,34 +169,10 @@ export class Constant extends Base {
             dictionaries: [
                 {
                     name: Constant.COLLINS,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
                 },
             ],
         },
         // JAPANESE ---> xxx
-        {
-            translation: new Translation(Constant.JAPANESE, Constant.ENGLISH),
-            dictionaries: [
-                {
-                    name: Constant.JISHO,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
-                },
-            ],
-        },
         {
             translation: new Translation(
                 Constant.JAPANESE,
@@ -314,14 +181,14 @@ export class Constant extends Base {
             dictionaries: [
                 {
                     name: Constant.KANTAN,
-                    fields: [
-                        Constant.WORD_TYPES_DICT,
-                        Constant.PHONETICS_DICT,
-                        Constant.EXAMPLES_DICT,
-                        Constant.SOUNDS_DICT,
-                        Constant.IMAGES_DICT,
-                        Constant.MEANING_DICT,
-                    ],
+                },
+            ],
+        },
+        {
+            translation: new Translation(Constant.JAPANESE, Constant.ENGLISH),
+            dictionaries: [
+                {
+                    name: Constant.JISHO,
                 },
             ],
         },

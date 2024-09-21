@@ -7,19 +7,23 @@ $(document).ready(async () => {
         if (Common.isValidJson($("#options").val())) {
             await Options.saveConfigsToStorage();
             await Options.loadConfigsFromStorage();
-            await Common.alertHtml("Configurations saved successfully!");
+            await Common.bootsAlert({
+                message: "Configurations saved successfully!",
+            });
         } else {
-            Common.alertHtml(
-                "Invalid JSON config! Please check your input!",
-                false
-            );
+            await Common.bootsAlert({
+                message: "Invalid JSON config! Please check your input!",
+                isSuccess: false,
+            });
         }
     });
 
     $("#resetBtn").click(async () => {
         await Common.presetOptions();
         await Options.loadConfigsFromStorage();
-        Common.alertHtml("Reset configurations successfully!");
+        await Common.bootsAlert({
+            message: "Reset configurations successfully!",
+        });
     });
 });
 
