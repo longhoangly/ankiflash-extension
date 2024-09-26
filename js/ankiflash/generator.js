@@ -1,8 +1,14 @@
 import { Common } from "../base/common.js";
 import { Constant } from "../base/constant.js";
-import { Dictionary } from "./dictionary.js";
 import { Card } from "./dto/card.js";
 import { Flash } from "./helper/flash.js";
+import { Oxford } from "./dictionary/oxford.js";
+import { Cambridge } from "./dictionary/cambridge.js";
+import { Collins } from "./dictionary/collins.js";
+import { Jisho } from "./dictionary/jisho.js";
+import { Kantan } from "./dictionary/kantan.js";
+import { LacViet } from "./dictionary/lacviet.js";
+import { Wiktionary } from "./dictionary/Wiktionary.js";
 
 export class Generator {
     genInputDto;
@@ -16,9 +22,8 @@ export class Generator {
             await Common.setFieldValue(fieldId, "");
         }
 
-        let dictionary = new Dictionary(this.genInputDto);
-        this.genInputDto.standardizedWords =
-            await dictionary.standardizedWords();
+        let dictionary = Generator.#getDictInstance(this.genInputDto);
+        this.genInputDto.standardizedWords = await dictionary.standardizedWords();
 
         let outputCards = [];
         for (const standardizedWord of this.genInputDto.standardizedWords) {
@@ -58,8 +63,7 @@ export class Generator {
             let currentOutput = (await Common.getTabStorage("outputTxt")) || "";
             await Common.setFieldValue(
                 "outputTxt",
-                card.meaning + "\n" + currentOutput,
-                true
+                card.meaning + "\n" + currentOutput
             );
         } catch (err) {
             Common.logError("Error appeared...", err);
@@ -67,11 +71,11 @@ export class Generator {
             card.status = "FAILED";
             card.errorMessage = `${cardInputDto.standardizedWord.word} - failed to create flash card!`;
 
-            let currentFailure = (await Common.getTabStorage("failureTxt")) || "";
+            let currentFailure =
+                (await Common.getTabStorage("failureTxt")) || "";
             await Common.setFieldValue(
                 "failureTxt",
-                card.errorMessage + "\n" + currentFailure,
-                true
+                card.errorMessage + "\n" + currentFailure
             );
         }
 
@@ -151,5 +155,37 @@ export class Generator {
             [mappingUrl],
             `AnkiFlash/${Constant.MAPPING_CSV}`
         );
+    }
+
+    static #getDictInstance(genInputDto) {
+        let dict;
+
+        switch (genInputDto.mainDict) {
+            case Constant.CAMBRIDGE:
+                dict = new Cambridge(genInputDto);
+                break;
+            case Constant.OXFORD:
+                dict = new Oxford(genInputDto);
+                break;
+            case Constant.COLLINS:
+                dict = new Collins(genInputDto);
+                break;
+            case Constant.JISHO:
+                dict = new Jisho(genInputDto);
+                break;
+            case Constant.KANTAN:
+                dict = new Kantan(genInputDto);
+                break;
+            case Constant.LACVIET:
+                dict = new LacViet(genInputDto);
+                break;
+            case Constant.WIKTIONARY:
+                dict = new Wiktionary(genInputDto);
+                break;
+            default:
+                throw new Error(`${genInputDto.mainDict} is not supported!`);
+        }
+
+        return dict;
     }
 }

@@ -30,7 +30,7 @@ $(document).ready(async () => {
 export class Options {
     static async loadConfigsFromStorage() {
         let jsonConfig = await Common.getStorage("ankiflashOptions");
-        Common.logInfo("storage jsonConfig", jsonConfig);
+        Common.logWarn("storage jsonConfig", jsonConfig);
         $("#options").html(JSON.stringify(jsonConfig, null, 4));
     }
 

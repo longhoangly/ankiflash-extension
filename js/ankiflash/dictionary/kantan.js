@@ -1,58 +1,82 @@
 import { Common } from "../../base/common.js";
 import { Constant } from "../../base/constant.js";
-export class Kantan {
-    cardInputDto;
+import { Dictionary } from "../dictionary.js";
 
-    constructor(cardInputDto) {
-        this.cardInputDto = cardInputDto;
+export class Kantan extends Dictionary {
+    constructor(genInputDto) {
+        super(genInputDto);
     }
 
     async standardizedWords() {
-        Common.logWarn("standardizedWords", Kantan.name);
+        Common.logWarn(`[standardizedWords] ${Kantan.name}`);
 
         let standardizedWords = [];
-        standardizedWords.push({
-            word: this.cardInputDto.word,
-            wordId: this.cardInputDto.word,
-            wordOri: this.cardInputDto.word,
-        });
-
+        for (const word of this.genInputDto.words) {
+            standardizedWords.push({
+                word: word,
+                wordId: word,
+                wordOri: word,
+            });
+        }
         return standardizedWords;
     }
 
-    async getWordTypes() {
-        Common.logWarn(
-            `getWordTypes ${this.cardInputDto.dictionaries.wordTypesDict}`
-        );
+    async getWordTypes(cardInputDto) {
+        Common.logWarn(`[getWordTypes] ${Kantan.name}`, cardInputDto);
     }
 
-    async getPhonetics() {
-        Common.logWarn(
-            `getPhonetics ${this.cardInputDto.dictionaries.phoneticsDict}`
-        );
+    async getPhonetics(cardInputDto) {
+        Common.logWarn(`[getPhonetics] ${Kantan.name}`, cardInputDto);
     }
 
-    async getExamples() {
-        Common.logWarn(
-            `getExamples ${this.cardInputDto.dictionaries.examplesDict}`
-        );
+    async getExamples(cardInputDto, count = 5) {
+        Common.logWarn(`[getExamples] ${Kantan.name}`, cardInputDto);
     }
 
-    async getSounds() {
-        Common.logWarn(
-            `getSounds ${this.cardInputDto.dictionaries.soundsDict}`
-        );
+    async getSounds(cardInputDto) {
+        Common.logWarn(`[getSounds] ${Kantan.name}`, cardInputDto);
     }
 
-    async getImages() {
-        Common.logWarn(
-            `getImages ${this.cardInputDto.dictionaries.imagesDict}`
-        );
+    async getImages(cardInputDto) {
+        Common.logWarn(`[getImages] ${Kantan.name}`, cardInputDto);
     }
 
-    async getMeaning() {
-        Common.logWarn(
-            `getMeaning ${this.cardInputDto.dictionaries.meaningDict}`
+    async getMeaning(cardInputDto) {
+        Common.logWarn(`[getMeaning] ${Kantan.name}`, cardInputDto);
+    }
+
+    async #getKantanDocument(cardInputDto) {
+        let [
+            standardizedWord,
+        ] = this.genInputDto.standardizedWords.filter((w) =>
+            Common.compareTwoJsonObjects(cardInputDto.standardizedWord, w)
         );
+
+        if (standardizedWord.kantanDocument) {
+            return standardizedWord.kantanDocument;
+        }
+
+        standardizedWord.kantanDocument = await Common.fetchNeutral({
+            method: "GET",
+            respType: Common.RESP_TYPE_ENUM.TEXT,
+            url: Constant.KT_VNJP_JPVN_URL.format(standardizedWord.wordId),
+        });
+
+        return standardizedWord.kantanDocument;
+    }
+
+    async #getKantanCss() {
+        if (this.genInputDto.kantanCss) {
+            return this.genInputDto.kantanCss;
+        }
+
+        let urlContent = await Common.getUrlContent("xxx");
+
+        this.genInputDto.kantanCss = urlContent
+            .replaceAll("\n", " ")
+            .replaceAll("\r", " ")
+            .replaceAll("\t", " ");
+
+        return this.genInputDto.kantanCss;
     }
 }

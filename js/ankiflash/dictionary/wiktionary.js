@@ -1,59 +1,82 @@
 import { Common } from "../../base/common.js";
 import { Constant } from "../../base/constant.js";
+import { Dictionary } from "../dictionary.js";
 
-export class Wiktionary {
-    cardInputDto;
-
-    constructor(cardInputDto) {
-        this.cardInputDto = cardInputDto;
+export class Wiktionary extends Dictionary {
+    constructor(genInputDto) {
+        super(genInputDto);
     }
 
     async standardizedWords() {
-        Common.logWarn("standardizedWords", Wiktionary.name);
+        Common.logWarn(`[standardizedWords] ${Wiktionary.name}`);
 
         let standardizedWords = [];
-        standardizedWords.push({
-            word: this.cardInputDto.word,
-            wordId: this.cardInputDto.word,
-            wordOri: this.cardInputDto.word,
-        });
-
+        for (const word of this.genInputDto.words) {
+            standardizedWords.push({
+                word: word,
+                wordId: word,
+                wordOri: word,
+            });
+        }
         return standardizedWords;
     }
 
-    async getWordTypes() {
-        Common.logWarn(
-            `getWordTypes ${this.cardInputDto.dictionaries.wordTypesDict}`
-        );
+    async getWordTypes(cardInputDto) {
+        Common.logWarn(`[getWordTypes] ${Wiktionary.name}`, cardInputDto);
     }
 
-    async getPhonetics() {
-        Common.logWarn(
-            `getPhonetics ${this.cardInputDto.dictionaries.phoneticsDict}`
-        );
+    async getPhonetics(cardInputDto) {
+        Common.logWarn(`[getPhonetics] ${Wiktionary.name}`, cardInputDto);
     }
 
-    async getExamples() {
-        Common.logWarn(
-            `getExamples ${this.cardInputDto.dictionaries.examplesDict}`
-        );
+    async getExamples(cardInputDto, count = 5) {
+        Common.logWarn(`[getExamples] ${Wiktionary.name}`, cardInputDto);
     }
 
-    async getSounds() {
-        Common.logWarn(
-            `getSounds ${this.cardInputDto.dictionaries.soundsDict}`
-        );
+    async getSounds(cardInputDto) {
+        Common.logWarn(`[getSounds] ${Wiktionary.name}`, cardInputDto);
     }
 
-    async getImages() {
-        Common.logWarn(
-            `getImages ${this.cardInputDto.dictionaries.imagesDict}`
-        );
+    async getImages(cardInputDto) {
+        Common.logWarn(`[getImages] ${Wiktionary.name}`, cardInputDto);
     }
 
-    async getMeaning() {
-        Common.logWarn(
-            `getMeaning ${this.cardInputDto.dictionaries.meaningDict}`
+    async getMeaning(cardInputDto) {
+        Common.logWarn(`[getMeaning] ${Wiktionary.name}`, cardInputDto);
+    }
+
+    async #getWiktionaryDocument(cardInputDto) {
+        let [
+            standardizedWord,
+        ] = this.genInputDto.standardizedWords.filter((w) =>
+            Common.compareTwoJsonObjects(cardInputDto.standardizedWord, w)
         );
+
+        if (standardizedWord.wiktionaryDocument) {
+            return standardizedWord.wiktionaryDocument;
+        }
+
+        standardizedWord.wiktionaryDocument = await Common.fetchNeutral({
+            method: "GET",
+            respType: Common.RESP_TYPE_ENUM.TEXT,
+            url: "xxx".format(standardizedWord.wordId),
+        });
+
+        return standardizedWord.kantanDocument;
+    }
+
+    async #getWiktionaryCss() {
+        if (this.genInputDto.wiktionaryCss) {
+            return this.genInputDto.wiktionaryCss;
+        }
+
+        let urlContent = await Common.getUrlContent("xxx");
+
+        this.genInputDto.wiktionaryCss = urlContent
+            .replaceAll("\n", " ")
+            .replaceAll("\r", " ")
+            .replaceAll("\t", " ");
+
+        return this.genInputDto.wiktionaryCss;
     }
 }

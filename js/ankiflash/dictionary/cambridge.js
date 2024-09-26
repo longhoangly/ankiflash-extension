@@ -1,45 +1,37 @@
 import { Common } from "../../base/common.js";
 
 export class Cambridge {
-    cardInputDto;
+    genInputDto;
 
-    constructor(cardInputDto) {
-        this.cardInputDto = cardInputDto;
+    constructor(genInputDto) {
+        this.genInputDto = genInputDto;
     }
 
-    async getWordTypes() {
-        Common.logWarn(
-            `getWordTypes ${this.cardInputDto.dictionaries.wordTypesDict}`
-        );
+    async getWordTypes(cardInputDto) {
+        Common.logWarn(`[getWordTypes] ${Cambridge.name}`);
     }
 
-    async getPhonetics() {
-        Common.logWarn(
-            `getPhonetics ${this.cardInputDto.dictionaries.phoneticsDict}`
-        );
+    async getPhonetics(cardInputDto) {
+        Common.logWarn(`[getPhonetics] ${Cambridge.name}`);
     }
 
-    async getExamples() {
-        Common.logWarn(
-            `getExamples ${this.cardInputDto.dictionaries.examplesDict}`
-        );
+    async getExamples(cardInputDto) {
+        Common.logWarn(`[getExamples] ${Cambridge.name}`);
     }
 
-    async getSounds() {
-        Common.logWarn(
-            `getSounds ${this.cardInputDto.dictionaries.soundsDict}`
-        );
+    async getSounds(cardInputDto) {
+        Common.logWarn(`[getSounds] ${Cambridge.name}`);
     }
 
-    async getImages() {
-        Common.logWarn(
-            `getImages ${this.cardInputDto.dictionaries.imagesDict}`
-        );
+    async getImages(cardInputDto) {
+        Common.logWarn(`[getImages] ${Cambridge.name}`);
     }
 
-    async getMeaning() {
-        Common.logWarn(
-            `getMeaning ${this.cardInputDto.dictionaries.meaningDict}`
-        );
+    async getMeaning(cardInputDto) {
+        Common.logWarn(`[getMeaning] ${Cambridge.name}`);
+    }
+
+    async getCopyright() {
+        return `The content of this card is get from the dictionary: ${Cambridge.name}`;
     }
 }

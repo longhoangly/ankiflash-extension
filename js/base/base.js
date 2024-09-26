@@ -166,11 +166,8 @@ export class Base {
             } else {
                 json = JSON.stringify(JSON.parse(json));
             }
-        } catch (error) {
-            Base.logDebug(
-                "Cannot convert JSON object to string...Please re-check JSON object...",
-                error
-            );
+        } catch (err) {
+            Base.logError("Error occurred", err);
         } finally {
             return json;
         }
@@ -180,11 +177,8 @@ export class Base {
         let json = jsonStr;
         try {
             json = JSON.parse(jsonStr);
-        } catch (error) {
-            Base.logDebug(
-                "Cannot convert string to JSON object...Please re-check JSON format...",
-                error
-            );
+        } catch (err) {
+            Base.logError("Error occurred", err);
         } finally {
             return json;
         }
@@ -583,7 +577,7 @@ export class Base {
             currentTab.id,
             "jsonKey",
             jsonKey,
-            "tabStorageValue",
+            "getTabStorage",
             tabStorageValue
         );
         return tabStorageValue;
@@ -633,11 +627,11 @@ export class Base {
     static async setTabStorage(jsonKey, value) {
         let currentTab = await Base.getCurrentTab();
         Base.logDebug(
-            "tabId",
+            "TabId",
             currentTab.id,
-            "jsonKey",
+            "JsonKey",
             jsonKey,
-            "setTabStorageValue",
+            "setTabStorage",
             value
         );
         return await Base.setJsonStorage(currentTab.id, [jsonKey], value);
@@ -761,7 +755,7 @@ export class Base {
                     printedResponse.success
                 ) {
                     let currentTab = await Base.getCurrentTab();
-                    if (currentTab.title === "ankiflash Test") {
+                    if (currentTab.title === "Ankiflash") {
                         Base.logSuccess(...commonLogs);
                     } else {
                         Base.logDebug(...commonLogs);
@@ -777,7 +771,7 @@ export class Base {
                     "ERROR",
                     error,
                 ]);
-                Base.logError(...commonLogs);
+                Base.logError(...commonLogs, "ERROR", error);
             }
         } catch (error) {
             Base.logError(...commonLogs, "ERROR", error);
@@ -816,34 +810,34 @@ export class Base {
     }
 
     static async fetchJsonContent(jsonPath) {
-        Base.logInfo("JS navitve fetching JSON file.", jsonPath);
+        Base.logInfo("JS navitve fetching JSON file", jsonPath);
 
         const response = await fetch(jsonPath);
         const json = await response.json();
-        Base.logSuccess("Json", json);
+        Base.logInfo("Json", json);
 
         return json;
     }
 
     static async getJsonContent(jsonPath) {
-        Base.logInfo("JQuery getting JSON file.", jsonPath);
+        Base.logInfo("JQuery getting JSON file", jsonPath);
 
         let json = await $.getJSON(jsonPath, (data) => {
             Base.logInfo("Json", data);
         }).fail((err) => {
-            Base.logError("an error has occurred.", err);
+            Base.logError("Error occurred", err);
         });
 
         return json;
     }
 
     static async getUrlContent(url) {
-        Base.logInfo("JQuery getting HTML content.", url);
+        Base.logInfo("JQuery getting URL content", url);
 
         let content = await $.get(url, (data) => {
-            Base.logDebug("Content", data);
+            Base.logInfo("Content", data);
         }).fail((err) => {
-            Base.logError("an error has occurred.", err);
+            Base.logError("Error occurred", err);
         });
 
         return content;
@@ -968,7 +962,9 @@ export class Base {
                 .map((c) => `${c.name}=${c.value}`)
                 .join("; ");
 
-            Base.logWarn(`Updating... ${cookieKey}=`, cookieString);
+            Base.logWarn(
+                `Updating cookie string... ${cookieKey}=${cookieString}`
+            );
             await Base.setStorage(cookieKey, cookieString);
         }
 
@@ -976,7 +972,7 @@ export class Base {
     }
 
     static async openThenCloseLoadedTab(url, isActive = false) {
-        Base.logInfo("Opening URL", url);
+        Base.logInfo("Opening URL...", url);
         const activeTab = await Base.getActiveTab();
 
         const createdTab = await Base.#createBrowserTab({
@@ -1004,7 +1000,7 @@ export class Base {
     }
 
     static async openNewTab(url, isActive = false) {
-        Base.logInfo("Opening URL", url);
+        Base.logInfo("Opening URL...", url);
         const activeTab = await Base.getActiveTab();
 
         await Base.#createBrowserTab({
@@ -1032,7 +1028,7 @@ export class Base {
             active: true,
             currentWindow: true,
         });
-        Base.logDebug("activeTab", activeTab);
+        Base.logDebug("ActiveTab", activeTab);
 
         return activeTab;
     }
@@ -1063,7 +1059,7 @@ export class Base {
         return promise;
     }
 
-    static async flattenJSON(obj = {}, res = {}, extraKey = "") {
+    static flattenJSON(obj = {}, res = {}, extraKey = "") {
         for (let key in obj) {
             if (
                 typeof obj[key] !== "object" ||
@@ -1074,30 +1070,30 @@ export class Base {
             ) {
                 res[extraKey + key] = obj[key];
             } else {
-                await Base.flattenJSON(obj[key], res, `${extraKey}${key}.`);
+                Base.flattenJSON(obj[key], res, `${extraKey}${key}.`);
             }
         }
         return res;
     }
 
-    static async compareTwoJsonObjects(jsonA, jsonB) {
+    static compareTwoJsonObjects(jsonA, jsonB) {
         // objects are equals
         // const y = { a: "1", b: "2" };
         // const x = { b: "2", a: "1" };
 
-        // let a = await Common.flattenJSON(x);
-        // let b = await Common.flattenJSON(y);
+        // let a = Common.flattenJSON(x);
+        // let b = Common.flattenJSON(y);
 
-        // Common.logError("a", a, "b", b);
-        // Common.logError("a === b", a === b); // false
+        // Common.logWarn("a", a, "b", b);
+        // Common.logWarn("a === b", a === b); // false
 
-        // let result = await Common.compareTwoJsonObjects(x, y);
-        // Common.logError("result", result); // true
+        // let result = Common.compareTwoJsonObjects(x, y);
+        // Common.logWarn("result", result); // true
 
-        let flattenJsonA = await Base.flattenJSON(jsonA);
+        let flattenJsonA = Base.flattenJSON(jsonA);
         const sortObjectA = Base.sortObject(flattenJsonA);
 
-        let flattenJsonB = await Base.flattenJSON(jsonB);
+        let flattenJsonB = Base.flattenJSON(jsonB);
         const sortObjectB = Base.sortObject(flattenJsonB);
 
         return JSON.stringify(sortObjectA) === JSON.stringify(sortObjectB);
@@ -1144,7 +1140,7 @@ export class Base {
     static async extSendMessageToBrowserTab(tabId, msgObj) {
         const promise = await new Promise((resolve, reject) => {
             chrome.tabs.sendMessage(tabId, msgObj, (response) => {
-                Base.logWarn("response from browser tab", response);
+                Base.logWarn("Response from browser tab", response);
 
                 if (chrome.runtime.lastError) {
                     return reject(chrome.runtime.lastError);
@@ -1159,7 +1155,7 @@ export class Base {
     static async tabSendMessageToBackground(msgObj) {
         const promise = await new Promise((resolve, reject) => {
             chrome.runtime.sendMessage(msgObj, (response) => {
-                Base.logWarn("response from background", response);
+                Base.logWarn("Response from background", response);
 
                 if (chrome.runtime.lastError) {
                     return reject(chrome.runtime.lastError);
@@ -1197,7 +1193,7 @@ export class Base {
         for (let index = 0; index < maxChecks; index++) {
             result = await stopConditionFunc(...args);
             Base.logWarn(
-                "waitUntil",
+                "[waitUntil]",
                 stopConditionFunc.name,
                 "params",
                 args,
@@ -1209,7 +1205,7 @@ export class Base {
 
             if (isStopped) {
                 Base.logWarn(
-                    "waitUntil",
+                    "[waitUntil]",
                     stopConditionFunc.name,
                     "params",
                     args,
@@ -1224,14 +1220,13 @@ export class Base {
 
         if (!isStopped) {
             Base.logError(
-                "waitUntil",
+                "[waitUntil]",
                 stopConditionFunc.name,
                 "params",
                 args,
                 "RETURNED",
                 result,
-                "...STILL CHECKING !!!",
-                `BUT Max check times reached !!! GIVE UP !!!`
+                "...STILL CHECKING !!! BUT Max check times reached !!! GIVE UP !!!"
             );
         }
 
@@ -1254,7 +1249,6 @@ export class Base {
             .join("");
 
         Base.logWarn(message, "=> hased 256 to =>", hashHex);
-
         return hashHex;
     }
 
@@ -1265,7 +1259,7 @@ export class Base {
 
     static downloadCsvFile(fileName, rows) {
         // each row in CSV file is an array of cells
-        Base.logWarn("Downloading csv file which contains below rows", rows);
+        Base.logInfo("Downloading csv file rows", rows);
 
         const csvContent =
             "data:application/csv;charset=utf-8," +

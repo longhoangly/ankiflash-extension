@@ -91,14 +91,14 @@ export class Common extends Constant {
         // timezone = "+8";
 
         let date = new Date(timestamp);
-        Common.logDebug("localtime", date.toLocaleString());
+        Common.logDebug("Localtime", date.toLocaleString());
 
         let localTimezone = (-1 * date.getTimezoneOffset()) / 60;
-        Common.logDebug("localtimezone", localTimezone);
+        Common.logDebug("Localtimezone", localTimezone);
 
         date.setHours(date.getHours() - localTimezone);
         date.setHours(date.getHours() + parseInt(timezone));
-        Common.logDebug("zonetime", date.toLocaleString());
+        Common.logDebug("Zonetime", date.toLocaleString());
 
         return date;
     }
@@ -107,7 +107,7 @@ export class Common extends Constant {
         // timezone = "+8";
 
         const date = Common.convertTimestampToDate(timestamp, timezone);
-        Common.logDebug("zonestamp", date.getTime());
+        Common.logDebug("Zonestamp", date.getTime());
 
         return date.getTime();
     }
@@ -149,7 +149,7 @@ export class Common extends Constant {
         if (tagName === "INPUT" && type === "radio") {
             fieldType = "RADIO";
         }
-        Common.logDebug(`field ${fieldId} type is ${fieldType}`);
+        Common.logDebug(`Field ${fieldId} type is ${fieldType}`);
 
         return fieldType;
     }
@@ -185,7 +185,7 @@ export class Common extends Constant {
         }
 
         for (const [_, field] of Object.entries(Common.UI_FIELDS)) {
-            Common.logDebug("Field config", field);
+            Common.logWarn("Init field config", field);
 
             // init options (before init value)
             await Common.#configFieldOptions(field);
@@ -283,7 +283,7 @@ export class Common extends Constant {
     }
 
     static async #autoCompleteFieldHandler(input, fieldId) {
-        Common.logInfo("Setup autocomplete field", fieldId);
+        Common.logInfo("Autocomplete field value changed", fieldId, input);
 
         if (input !== undefined && input.length >= 3) {
             let histories =
@@ -311,6 +311,7 @@ export class Common extends Constant {
 
     static async #createAutoCompleteField(fieldId, source) {
         Common.logInfo("Create autocomplete field", fieldId, source);
+
         $(`#${fieldId}`)
             .autocomplete({
                 minLength: 0,
@@ -318,7 +319,7 @@ export class Common extends Constant {
                 select: async (event, ui) => {
                     $(`#${fieldId}`).val(ui.item.label);
                     await Common.setTabStorage(fieldId, ui.item.label);
-                    Common.logInfo(fieldId, `[${ui.item.label}]`);
+                    Common.logInfo(`Autocomplete '${fieldId}'`, ui.item);
                 },
             })
             .on("focus", async () => {
@@ -358,7 +359,7 @@ export class Common extends Constant {
 
     static async inputChangedHandler(event) {
         const fieldId = event.data.fieldId;
-        Common.logWarn("event.data.fieldId >", fieldId);
+        Common.logWarn(`Field '${fieldId}' input changed`);
 
         let input;
         const fieldType = Common.#getFieldType(fieldId);
@@ -377,10 +378,14 @@ export class Common extends Constant {
                 break;
         }
         await Common.setTabStorage(fieldId, input);
-        Common.logInfo("Set storage...", `[${fieldId}]`, `[${input}]`);
+        Common.logInfo(
+            `[inputChangedHandler] Set storage... [${fieldId}] [${input}]`
+        );
 
         let output = await Common.getTabStorage(fieldId);
-        Common.logDebug("Get storage...", `[${fieldId}]`, `[${output}]`);
+        Common.logDebug(
+            `[inputChangedHandler] Get storage... [${fieldId}] [${output}]`
+        );
 
         const field = Common.UI_FIELDS[`${fieldId}Config`];
         if (field.autocomplete) {
@@ -403,6 +408,11 @@ export class Common extends Constant {
                 await $(`#${fieldId}`).val(value);
                 break;
         }
+
+        Common.logInfo(
+            `[setFieldValue] Set storage... [${fieldId}] [${value}]`
+        );
+
         await Common.setTabStorage(fieldId, value);
         $(`#${fieldId}`).trigger("input");
     }
@@ -411,7 +421,7 @@ export class Common extends Constant {
         jsonPath = "../../data/default-options.json",
         storageConfigName = "ankiflashOptions"
     ) {
-        Common.logInfo(`loading config file ${jsonPath} into the storage...`);
+        Common.logInfo(`Loading config file ${jsonPath} into the storage...`);
         let jsonConfig = await Common.fetchJsonContent(jsonPath);
         await Common.setStorage(storageConfigName, jsonConfig);
     }
@@ -446,7 +456,7 @@ export class Common extends Constant {
                     ],
                 });
 
-                Common.logInfo("Query existing tabs", `*://*.${domain}/*`);
+                Common.logInfo(`Query existing tabs *://*.${domain}/*`);
                 let tabs = await chrome.tabs.query({
                     url: `*://*.${domain}/*`,
                 });
@@ -459,7 +469,7 @@ export class Common extends Constant {
 
     static async clearNetworkRules() {
         const currentRules = await chrome.declarativeNetRequest.getDynamicRules();
-        Common.logWarn("currentRules", currentRules);
+        Common.logInfo("currentRules", currentRules);
 
         await chrome.declarativeNetRequest.updateDynamicRules({
             removeRuleIds: currentRules.map((rule) => rule.id),

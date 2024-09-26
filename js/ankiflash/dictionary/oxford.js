@@ -1,45 +1,45 @@
 import { Common } from "../../base/common.js";
 import { Constant } from "../../base/constant.js";
+import { Dictionary } from "../dictionary.js";
 import { Flash } from "../helper/flash.js";
 
-export class Oxford {
-    cardInputDto;
-
-    constructor(cardInputDto) {
-        this.cardInputDto = cardInputDto;
+export class Oxford extends Dictionary {
+    constructor(genInputDto) {
+        super(genInputDto);
     }
 
     async standardizedWords() {
-        Common.logWarn("standardizedWords", Oxford.name);
+        Common.logWarn(`[standardizedWords] ${Oxford.name}`);
 
         let standardizedWords = [];
-        standardizedWords.push({
-            word: this.cardInputDto.word,
-            wordId: this.cardInputDto.word,
-            wordOri: this.cardInputDto.word,
-        });
-
+        for (const word of this.genInputDto.words) {
+            standardizedWords.push({
+                word: word,
+                wordId: word,
+                wordOri: word,
+            });
+        }
         return standardizedWords;
     }
 
-    async getWordTypes() {
-        Common.logWarn(
-            `getWordTypes ${this.cardInputDto.dictionaries.wordTypesDict}`
-        );
+    async getWordTypes(cardInputDto) {
+        Common.logWarn(`[getWordTypes] ${Oxford.name}`, cardInputDto);
 
-        let wordTypes = $(await this.#getOxfordDocument()).find("span.pos");
+        let wordTypes = $(await this.#getOxfordDocument(cardInputDto)).find(
+            "span.pos"
+        );
         wordTypes = `(${$(wordTypes[0].outerHTML).text()})`;
 
         Common.logWarn("wordTypes", wordTypes);
         return wordTypes;
     }
 
-    async getPhonetics() {
-        Common.logWarn(
-            `getPhonetics ${this.cardInputDto.dictionaries.phoneticsDict}`
-        );
+    async getPhonetics(cardInputDto) {
+        Common.logWarn(`[getPhonetics] ${Oxford.name}`, cardInputDto);
 
-        let phonetics = $(await this.#getOxfordDocument()).find("span.phon");
+        let phonetics = $(await this.#getOxfordDocument(cardInputDto)).find(
+            "span.phon"
+        );
         phonetics = `${$(phonetics[0].outerHTML).text()} ${$(
             phonetics[1].outerHTML
         ).text()}`;
@@ -48,12 +48,12 @@ export class Oxford {
         return phonetics;
     }
 
-    async getExamples(count = 5) {
-        Common.logWarn(
-            `getExamples ${this.cardInputDto.dictionaries.examplesDict}`
-        );
+    async getExamples(cardInputDto, count = 5) {
+        Common.logWarn(`[getExamples] ${Oxford.name}`, cardInputDto);
 
-        let exampleTags = $(await this.#getOxfordDocument()).find("span.x");
+        let exampleTags = $(await this.#getOxfordDocument(cardInputDto)).find(
+            "span.x"
+        );
         exampleTags = exampleTags.slice(0, count);
 
         let examples = [];
@@ -65,7 +65,7 @@ export class Oxford {
             return Constant.NO_EXAMPLE;
         }
 
-        let word = this.cardInputDto.standardizedWord.word;
+        let word = cardInputDto.standardizedWord.word;
         for (let i = 0; i < examples.length; i++) {
             if (examples[i].includes(word)) {
                 examples[i] = examples[i].replaceAll(word, `{{c1::${word}}}`);
@@ -77,25 +77,25 @@ export class Oxford {
         return await Flash.buildExamples(examples);
     }
 
-    async getSounds() {
-        Common.logWarn(
-            `getSounds ${this.cardInputDto.dictionaries.soundsDict}`
-        );
+    async getSounds(cardInputDto) {
+        Common.logWarn(`[getSounds] ${Oxford.name}`, cardInputDto);
 
         let soundLinks = [];
         for (const selector of ["div.pron-uk", "div.pron-us"]) {
-            let [soundTag] = $(await this.#getOxfordDocument()).find(selector);
+            let [soundTag] = $(
+                await this.#getOxfordDocument(cardInputDto)
+            ).find(selector);
             soundLinks.push($(soundTag.outerHTML).attr("data-src-mp3"));
         }
 
         Common.logWarn("soundLinks", soundLinks);
-        if (!this.cardInputDto.isOnline) {
+        if (!cardInputDto.isOnline) {
             await Flash.downloadFiles(soundLinks);
         }
 
         let sounds = [];
         for (let sound of soundLinks) {
-            if (!this.cardInputDto.isOnline) {
+            if (!cardInputDto.isOnline) {
                 sound = sound.split("/").pop();
             }
 
@@ -110,19 +110,19 @@ export class Oxford {
         return sounds.join(" ");
     }
 
-    async getImages() {
-        Common.logWarn(
-            `getImages ${this.cardInputDto.dictionaries.imagesDict}`
-        );
+    async getImages(cardInputDto) {
+        Common.logWarn(`[getImages] ${Oxford.name}`, cardInputDto);
 
-        let [imageTag] = $(await this.#getOxfordDocument()).find("a.topic");
+        let [imageTag] = $(await this.#getOxfordDocument(cardInputDto)).find(
+            "a.topic"
+        );
         if (imageTag) {
             let imageLink = $(imageTag.outerHTML).attr("href");
 
             let image = imageLink;
             Common.logWarn("imageLink", imageLink);
 
-            if (!this.cardInputDto.isOnline) {
+            if (!cardInputDto.isOnline) {
                 await Flash.downloadFiles([imageLink]);
                 image = imageLink.split("/").pop();
             }
@@ -131,17 +131,15 @@ export class Oxford {
             return image;
         } else {
             return '<a href="https://www.google.com/search?biw=1280&bih=661&tbm=isch&sa=1&q={}" style="font-size: 15px; color: blue">Search Images</a>'.format(
-                this.cardInputDto.standardizedWord.wordOri
+                cardInputDto.standardizedWord.wordOri
             );
         }
     }
 
-    async getMeaning() {
-        Common.logWarn(
-            `getMeaning ${this.cardInputDto.dictionaries.meaningDict}`
-        );
+    async getMeaning(cardInputDto) {
+        Common.logWarn(`[getMeaning] ${Oxford.name}`, cardInputDto);
 
-        let [sense] = $(await this.#getOxfordDocument()).find(
+        let [sense] = $(await this.#getOxfordDocument(cardInputDto)).find(
             "ol.senses_multiple"
         );
 
@@ -158,25 +156,29 @@ export class Oxford {
         return `<div class="content-container"> ${meaning} </div> <style> ${await this.#getOxfordCss()} </style>`;
     }
 
-    async #getOxfordDocument() {
-        if (this.cardInputDto.oxfordDocument) {
-            return this.cardInputDto.oxfordDocument;
+    async #getOxfordDocument(cardInputDto) {
+        let [
+            standardizedWord,
+        ] = this.genInputDto.standardizedWords.filter((w) =>
+            Common.compareTwoJsonObjects(cardInputDto.standardizedWord, w)
+        );
+
+        if (standardizedWord.oxfordDocument) {
+            return standardizedWord.oxfordDocument;
         }
 
-        this.cardInputDto.oxfordDocument = await Common.fetchNeutral({
+        standardizedWord.oxfordDocument = await Common.fetchNeutral({
             method: "GET",
             respType: Common.RESP_TYPE_ENUM.TEXT,
-            url: Constant.OX_EN_EN_SEARCH_URL.format(
-                this.cardInputDto.standardizedWord.wordId
-            ),
+            url: Constant.OX_EN_EN_SEARCH_URL.format(standardizedWord.wordId),
         });
 
-        return this.cardInputDto.oxfordDocument;
+        return standardizedWord.oxfordDocument;
     }
 
     async #getOxfordCss() {
-        if (this.cardInputDto.oxfordCss) {
-            return this.cardInputDto.oxfordCss;
+        if (this.genInputDto.oxfordCss) {
+            return this.genInputDto.oxfordCss;
         }
 
         let urlContent = await Common.getUrlContent(
@@ -200,11 +202,11 @@ export class Oxford {
             "https://www.oxfordlearnersdictionaries.com/external/images"
         );
 
-        this.cardInputDto.oxfordCss = oxfordCss.replaceAll(
+        this.genInputDto.oxfordCss = oxfordCss.replaceAll(
             "div.collapse .body .unbox:first-of-type",
             "div.collapse .body .unbox"
         );
 
-        return this.cardInputDto.oxfordCss;
+        return this.genInputDto.oxfordCss;
     }
 }

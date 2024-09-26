@@ -32,24 +32,8 @@ export class AnkiFlash {
                 ),
                 relatedWords: await Common.getTabStorage("relatedWords"),
                 isOnline: await Common.getTabStorage("isOnline"),
-                dictionaries: {
-                    wordTypesDict: await Common.getTabStorage("wordTypesDict"),
-                    phoneticsDict: await Common.getTabStorage("phoneticsDict"),
-                    examplesDict: await Common.getTabStorage("examplesDict"),
-                    soundsDict: await Common.getTabStorage("soundsDict"),
-                    imagesDict: await Common.getTabStorage("imagesDict"),
-                    meaningDict: await Common.getTabStorage("meaningDict"),
-                },
+                mainDict: await Common.getTabStorage("mainDict"),
             };
-
-            genInputDto.dictionaries.combinedDicts = Common.distinctArray([
-                genInputDto.dictionaries.wordTypesDict,
-                genInputDto.dictionaries.phoneticsDict,
-                genInputDto.dictionaries.examplesDict,
-                genInputDto.dictionaries.soundsDict,
-                genInputDto.dictionaries.imagesDict,
-                genInputDto.dictionaries.meaningDict,
-            ]);
 
             let gen = new Generator(genInputDto);
             Common.logWarn("gen", gen);
