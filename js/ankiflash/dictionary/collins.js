@@ -31,7 +31,7 @@ export class Collins extends Dictionary {
         Common.logWarn(`[getMeaning] ${Collins.name}`, cardInputDto);
     }
 
-    async #getCollinsDocument(cardInputDto) {
+    async #getDocument(cardInputDto) {
         let [
             standardizedWord,
         ] = this.genInputDto.standardizedWords.filter((w) =>
@@ -51,12 +51,12 @@ export class Collins extends Dictionary {
         return standardizedWord.collinsDocument;
     }
 
-    async #getCollinsCss() {
+    async #getCss() {
         if (this.genInputDto.collinsCss) {
             return this.genInputDto.collinsCss;
         }
 
-        let urlContent = await Common.getUrlContent("xxx");
+        const urlContent = await Common.getUrlContent("xxx");
 
         this.genInputDto.collinsCss = urlContent
             .replaceAll("\n", " ")

@@ -45,7 +45,7 @@ export class Wiktionary extends Dictionary {
         Common.logWarn(`[getMeaning] ${Wiktionary.name}`, cardInputDto);
     }
 
-    async #getWiktionaryDocument(cardInputDto) {
+    async #getDocument(cardInputDto) {
         let [
             standardizedWord,
         ] = this.genInputDto.standardizedWords.filter((w) =>
@@ -65,12 +65,12 @@ export class Wiktionary extends Dictionary {
         return standardizedWord.kantanDocument;
     }
 
-    async #getWiktionaryCss() {
+    async #getCss() {
         if (this.genInputDto.wiktionaryCss) {
             return this.genInputDto.wiktionaryCss;
         }
 
-        let urlContent = await Common.getUrlContent("xxx");
+        const urlContent = await Common.getUrlContent("xxx");
 
         this.genInputDto.wiktionaryCss = urlContent
             .replaceAll("\n", " ")

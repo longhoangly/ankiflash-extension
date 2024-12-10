@@ -7,11 +7,12 @@ $(document).ready(async () => {
         if (Common.isValidJson($("#options").val())) {
             await Options.saveConfigsToStorage();
             await Options.loadConfigsFromStorage();
-            await Common.bootsAlert({
+
+            await Common.pushAlert({
                 message: "Configurations saved successfully!",
             });
         } else {
-            await Common.bootsAlert({
+            await Common.pushAlert({
                 message: "Invalid JSON config! Please check your input!",
                 isSuccess: false,
             });
@@ -21,7 +22,7 @@ $(document).ready(async () => {
     $("#resetBtn").click(async () => {
         await Common.presetOptions();
         await Options.loadConfigsFromStorage();
-        await Common.bootsAlert({
+        await Common.pushAlert({
             message: "Reset configurations successfully!",
         });
     });
@@ -29,13 +30,15 @@ $(document).ready(async () => {
 
 export class Options {
     static async loadConfigsFromStorage() {
-        let jsonConfig = await Common.getStorage("ankiflashOptions");
+        const jsonConfig = await Common.getStorage(
+            `${chrome.runtime.id}Options`
+        );
         Common.logWarn("storage jsonConfig", jsonConfig);
         $("#options").html(JSON.stringify(jsonConfig, null, 4));
     }
 
     static async saveConfigsToStorage() {
-        let jsonConfig = Common.stringToJson($("#options").val());
-        await Common.setStorage("ankiflashOptions", jsonConfig);
+        const jsonConfig = Common.stringToJson($("#options").val());
+        await Common.setStorage(`${chrome.runtime.id}Options`, jsonConfig);
     }
 }

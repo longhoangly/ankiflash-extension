@@ -70,7 +70,7 @@ export class Kantan extends Dictionary {
             return this.genInputDto.kantanCss;
         }
 
-        let urlContent = await Common.getUrlContent("xxx");
+        const urlContent = await Common.getUrlContent("xxx");
 
         this.genInputDto.kantanCss = urlContent
             .replaceAll("\n", " ")

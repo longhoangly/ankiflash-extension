@@ -34,7 +34,7 @@ export class Base {
         return uuid;
     }
 
-    static isNotNull(value) {
+    static isDefined(value) {
         return (
             value !== "" &&
             value !== undefined &&
@@ -44,7 +44,7 @@ export class Base {
         );
     }
 
-    static isNull(value) {
+    static isUndefined(value) {
         return (
             value === "" ||
             value === undefined ||
@@ -326,8 +326,12 @@ export class Base {
 
     static getDaysArray(start, end) {
         // From: "2021-06-09" to "2021-06-10"
+        start = new Date(start);
+        end = new Date(end);
+
+        let arr = [];
         for (
-            let arr = [], dt = new Date(start);
+            let dt = new Date(start);
             dt <= end;
             dt.setDate(dt.getDate() + 1)
         ) {
@@ -345,11 +349,11 @@ export class Base {
             onlyDate: true,
         }
     ) {
-        let tmpDate = new Date();
+        const tmpDate = new Date();
         Base.logDebug("tmpDate.getTime()", tmpDate.getTime());
 
         let date = new Date(tmpDate.getTime());
-        let localTimezone = (-1 * date.getTimezoneOffset()) / 60;
+        const localTimezone = (-1 * date.getTimezoneOffset()) / 60;
 
         date.setDate(date.getDate() + timeConfig.offsetDate);
         date.setHours(date.getHours() - localTimezone);
@@ -370,7 +374,7 @@ export class Base {
     static requiredField(varValue, varName) {
         Base.logDebug(varValue, "... is value of required field ...", varName);
 
-        if (Base.isNull(varValue)) {
+        if (Base.isUndefined(varValue)) {
             throw new Error(
                 `{${varName}} is required field, but actual value is {${varValue}}`
             );
@@ -385,12 +389,12 @@ export class Base {
     static calc(str) {
         str = str.replaceAll(" ", "");
         const blocks = str.split(/[+-]/i);
-        let mainOperators = [...str.matchAll(/[+-]/g)].map((r) => r[0]);
+        const mainOperators = [...str.matchAll(/[+-]/g)].map((r) => r[0]);
 
         let blockValues = [];
         for (const block of blocks) {
             const numbers = block.split(/[/*]/i);
-            let subOperators = [...block.matchAll(/[/*]/g)].map((r) => r[0]);
+            const subOperators = [...block.matchAll(/[/*]/g)].map((r) => r[0]);
             blockValues.push(Base.#calcArray(numbers, subOperators));
         }
 
@@ -416,7 +420,7 @@ export class Base {
             );
         }
 
-        let combinedVal = Base.#calcNum(
+        const combinedVal = Base.#calcNum(
             numbers.shift(),
             operators.shift(),
             numbers.shift()
@@ -493,7 +497,7 @@ export class Base {
     static setElementColor(selector, colorCode) {
         // $(selector).css("cssText", `color: ${colorCode} !important`);
         // $(selector).css({"font-style": "italic", "font-weight": "bold","text-decoration": "underline"});
-        let cssObj = { color: colorCode };
+        const cssObj = { color: colorCode };
         $(selector).css(cssObj);
     }
 
@@ -511,7 +515,7 @@ export class Base {
         }
 
         value = String(value);
-        let matches = value.match(/^\d+(\.\d+){0,1}$/g);
+        const matches = value.match(/^\d+(\.\d+){0,1}$/g);
 
         return matches !== null && matches.length > 0;
     }
@@ -530,8 +534,14 @@ export class Base {
         }
     }
 
+    static async clearStorage() {
+        await chrome.storage.local.clear(() => {
+            Base.logInfo("Removed chrome extension - local storage");
+        });
+    }
+
     static async getStorages(keys) {
-        let promise = await new Promise((resolve, reject) => {
+        const promise = await new Promise((resolve, reject) => {
             // keys = null to get the whole storage
             chrome.storage.local.get(keys, (data) => {
                 if (chrome.runtime.lastError) {
@@ -545,7 +555,8 @@ export class Base {
     }
 
     static async getStorage(key) {
-        let data = await Base.getStorages([key]);
+        key = String(key);
+        const data = await Base.getStorages([key]);
         Base.logDebug("Return storage...", key, data[key]);
         return data[key];
     }
@@ -555,7 +566,7 @@ export class Base {
         json[key] = value;
         Base.logDebug("Saving storage...", key, value);
 
-        let promise = await new Promise((resolve, reject) => {
+        const promise = await new Promise((resolve, reject) => {
             chrome.storage.local.set(json, () => {
                 if (chrome.runtime.lastError) {
                     return reject(chrome.runtime.lastError);
@@ -567,17 +578,17 @@ export class Base {
         return promise;
     }
 
-    static async getTabStorage(jsonKey) {
-        let currentTab = await Base.getCurrentTab();
-        let tabStorageValue = await Base.getJsonStorage(currentTab.id, [
-            jsonKey,
-        ]);
+    static async getTabStorage(key) {
+        const currentTab = await Base.getCurrentTab();
+        const tabId = currentTab?.id || chrome.runtime.id;
+
+        const tabStorageValue = await Base.getStorage(`${tabId}_${key}`);
         Base.logDebug(
-            "tabId",
-            currentTab.id,
-            "jsonKey",
-            jsonKey,
-            "getTabStorage",
+            "TabId",
+            tabId,
+            "key",
+            key,
+            "[getTabStorage]",
             tabStorageValue
         );
         return tabStorageValue;
@@ -588,9 +599,8 @@ export class Base {
             throw new Error("Please use getStorage method instead.");
         }
         storageKey = String(storageKey);
-        let json = await Base.getStorage(storageKey);
-
-        let value = Base.#getJsonFieldValue(jsonKeys, json);
+        const json = await Base.getStorage(storageKey);
+        const value = Base.#getJsonFieldValue(jsonKeys, json);
 
         Base.logDebug("Return storage JSON value...", value);
         return value;
@@ -615,29 +625,24 @@ export class Base {
             throw new Error("Please use setStorage method instead.");
         }
         storageKey = String(storageKey);
-        let json = await Base.getStorage(storageKey);
+        const json = await Base.getStorage(storageKey);
 
-        let storedJson = await Base.#setJsonFieldValue(jsonKeys, value, json);
+        const storedJson = Base.setJsonFieldValue(jsonKeys, value, json);
         await Base.setStorage(storageKey, storedJson);
 
         Base.logDebug("Saving storage JSON value...", storedJson);
         return storedJson;
     }
 
-    static async setTabStorage(jsonKey, value) {
-        let currentTab = await Base.getCurrentTab();
-        Base.logDebug(
-            "TabId",
-            currentTab.id,
-            "JsonKey",
-            jsonKey,
-            "setTabStorage",
-            value
-        );
-        return await Base.setJsonStorage(currentTab.id, [jsonKey], value);
+    static async setTabStorage(key, value) {
+        const currentTab = await Base.getCurrentTab();
+        const tabId = currentTab?.id || chrome.runtime.id;
+
+        Base.logDebug("TabId", tabId, "key", key, "[setTabStorage]", value);
+        return await Base.setStorage(`${tabId}_${key}`, value);
     }
 
-    static async #setJsonFieldValue(keys, value, json) {
+    static setJsonFieldValue(keys, value, json) {
         Base.logDebug("Setting", value, "to", json, "by", keys);
 
         if (json) {
@@ -645,8 +650,8 @@ export class Base {
                 json[keys.shift()] = value;
                 return json;
             } else {
-                let firstKey = keys.shift();
-                let subJson = await Base.#setJsonFieldValue(
+                const firstKey = keys.shift();
+                const subJson = Base.setJsonFieldValue(
                     keys,
                     value,
                     json[firstKey]
@@ -662,9 +667,10 @@ export class Base {
     }
 
     static async fetchWithTimeout(request) {
-        let requestTimeout = await Base.getJsonStorage("ankiflashOptions", [
-            "requestTimeout",
-        ]);
+        const requestTimeout = await Base.getJsonStorage(
+            `${chrome.runtime.id}Options`,
+            ["requestTimeout"]
+        );
 
         if (!request.timeout) {
             request.timeout = requestTimeout;
@@ -697,7 +703,7 @@ export class Base {
             }
         }
 
-        let fetchOptions = {
+        const fetchOptions = {
             method: request.method,
             headers: new Headers(request.headers),
             body: request.payload,
@@ -709,9 +715,9 @@ export class Base {
         };
 
         let response;
-        let printedResponse;
+        let printedResp;
 
-        let printedPayload = Base.isValidJson(request.payload)
+        const printedPayload = Base.isValidJson(request.payload)
             ? JSON.parse(request.payload)
             : request.payload;
 
@@ -733,41 +739,36 @@ export class Base {
 
             try {
                 if (request.respType === Base.RESP_TYPE_ENUM.RESPONSE) {
-                    printedResponse = response;
+                    printedResp = response;
                 } else if (request.respType === Base.RESP_TYPE_ENUM.TEXT) {
-                    printedResponse = await response.text();
+                    printedResp = await response.text();
                 } else if (request.respType === Base.RESP_TYPE_ENUM.BLOB) {
-                    printedResponse = await response.blob();
+                    printedResp = await response.blob();
                 } else {
-                    printedResponse = await response.clone().json();
+                    printedResp = await response.clone().json();
                 }
 
                 commonLogs = commonLogs.concat([
                     "RESPONSE",
-                    Base.isValidJson(printedResponse)
-                        ? printedResponse
-                        : String(printedResponse).slice(0, 100),
+                    Base.isValidJson(printedResp)
+                        ? printedResp
+                        : String(printedResp).slice(0, 500),
                 ]);
 
                 if (
                     response.ok ||
                     response.status == 200 ||
-                    printedResponse.success
+                    printedResp.success
                 ) {
-                    let currentTab = await Base.getCurrentTab();
-                    if (currentTab.title === "Ankiflash") {
-                        Base.logSuccess(...commonLogs);
-                    } else {
-                        Base.logDebug(...commonLogs);
-                    }
+                    Base.logSuccess(...commonLogs);
                 } else {
                     Base.logError(...commonLogs);
                 }
             } catch (error) {
-                printedResponse = await response.text();
+                printedResp = await response.text();
                 commonLogs = commonLogs.concat([
                     "RESPONSE",
-                    printedResponse,
+                    printedResp,
                     "ERROR",
                     error,
                 ]);
@@ -777,19 +778,22 @@ export class Base {
             Base.logError(...commonLogs, "ERROR", error);
         }
 
-        return printedResponse;
+        return printedResp;
     }
 
     static async fetchRetries(request) {
-        const retryTimes = await Base.getJsonStorage("ankiflashOptions", [
-            "retryTimes",
-        ]);
-        const retryInterval = await Base.getJsonStorage("ankiflashOptions", [
-            "retryInterval",
-        ]);
-        const retryCodes = await Base.getJsonStorage("ankiflashOptions", [
-            "retryCodes",
-        ]);
+        const retryTimes = await Base.getJsonStorage(
+            `${chrome.runtime.id}Options`,
+            ["retryTimes"]
+        );
+        const retryInterval = await Base.getJsonStorage(
+            `${chrome.runtime.id}Options`,
+            ["retryInterval"]
+        );
+        const retryCodes = await Base.getJsonStorage(
+            `${chrome.runtime.id}Options`,
+            ["retryCodes"]
+        );
 
         let json;
         let requestCount = 0;
@@ -822,7 +826,7 @@ export class Base {
     static async getJsonContent(jsonPath) {
         Base.logInfo("JQuery getting JSON file", jsonPath);
 
-        let json = await $.getJSON(jsonPath, (data) => {
+        const json = await $.getJSON(jsonPath, (data) => {
             Base.logInfo("Json", data);
         }).fail((err) => {
             Base.logError("Error occurred", err);
@@ -834,8 +838,8 @@ export class Base {
     static async getUrlContent(url) {
         Base.logInfo("JQuery getting URL content", url);
 
-        let content = await $.get(url, (data) => {
-            Base.logInfo("Content", data);
+        const content = await $.get(url, (data) => {
+            Base.logInfo("Content", data.slice(0, 500));
         }).fail((err) => {
             Base.logError("Error occurred", err);
         });
@@ -844,7 +848,7 @@ export class Base {
     }
 
     static async getCookie(cookieDetails) {
-        let cookie = await chrome.cookies.get(cookieDetails);
+        const cookie = await chrome.cookies.get(cookieDetails);
 
         if (cookie !== null && cookie != undefined && cookie.value) {
             Base.logDebug("Found cookie", cookieDetails, cookie.value);
@@ -926,8 +930,8 @@ export class Base {
         return cookieString;
     }
 
-    static async updateCookieString(cookieKey, setCookies) {
-        let cookieString = await Base.getStorage(cookieKey);
+    static async updateCookieString(cookieStorageKey, setCookies) {
+        let cookieString = (await Base.getStorage(cookieStorageKey)) || "";
 
         if (setCookies.length > 0) {
             let storageCookies = cookieString
@@ -949,10 +953,9 @@ export class Base {
 
             // update cookies already in storage string
             storageCookies.forEach((storageCookie) => {
-                let [foundCookie] = setCookies.filter(
+                const [foundCookie] = setCookies.filter(
                     (c) => c.name === storageCookie.name
                 );
-
                 if (foundCookie) {
                     storageCookie.value = foundCookie.value;
                 }
@@ -963,15 +966,19 @@ export class Base {
                 .join("; ");
 
             Base.logWarn(
-                `Updating cookie string... ${cookieKey}=${cookieString}`
+                `Updating cookie string... ${cookieStorageKey}=${cookieString}`
             );
-            await Base.setStorage(cookieKey, cookieString);
+            await Base.setStorage(cookieStorageKey, cookieString);
         }
 
         return cookieString;
     }
 
-    static async openThenCloseLoadedTab(url, isActive = false) {
+    static async openThenCloseLoadedTab(
+        url,
+        isWaiting = false,
+        isActive = false
+    ) {
         Base.logInfo("Opening URL...", url);
         const activeTab = await Base.getActiveTab();
 
@@ -982,21 +989,31 @@ export class Base {
         });
 
         await Base.setStorage(createdTab.id, false);
-        chrome.tabs.onUpdated.addListener(async (tabId, info) => {
-            if (createdTab.id === tabId && info.status === "complete") {
+        chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+            if (
+                createdTab.id === tabId &&
+                changeInfo.status === "complete" &&
+                tab.url.includes(url)
+            ) {
                 await Base.setStorage(createdTab.id, true);
                 await chrome.tabs.remove(createdTab.id);
             }
         });
 
-        await Base.waitUntil(
-            async (tabId) => {
-                return { isStopped: await Base.getStorage(String(tabId)) };
-            },
-            500,
-            30000,
-            createdTab.id
-        );
+        if (isWaiting) {
+            await Base.waitUntil(
+                async (tabId) => {
+                    const isTabClosed = await Base.getStorage(tabId);
+                    return {
+                        isStopped:
+                            isTabClosed === undefined ? true : isTabClosed,
+                    };
+                },
+                500,
+                30000,
+                createdTab.id
+            );
+        }
     }
 
     static async openNewTab(url, isActive = false) {
@@ -1081,19 +1098,19 @@ export class Base {
         // const y = { a: "1", b: "2" };
         // const x = { b: "2", a: "1" };
 
-        // let a = Common.flattenJSON(x);
-        // let b = Common.flattenJSON(y);
+        // const a = Common.flattenJSON(x);
+        // const b = Common.flattenJSON(y);
 
         // Common.logWarn("a", a, "b", b);
         // Common.logWarn("a === b", a === b); // false
 
-        // let result = Common.compareTwoJsonObjects(x, y);
+        // const result = Common.compareTwoJsonObjects(x, y);
         // Common.logWarn("result", result); // true
 
-        let flattenJsonA = Base.flattenJSON(jsonA);
+        const flattenJsonA = Base.flattenJSON(jsonA);
         const sortObjectA = Base.sortObject(flattenJsonA);
 
-        let flattenJsonB = Base.flattenJSON(jsonB);
+        const flattenJsonB = Base.flattenJSON(jsonB);
         const sortObjectB = Base.sortObject(flattenJsonB);
 
         return JSON.stringify(sortObjectA) === JSON.stringify(sortObjectB);
@@ -1138,39 +1155,49 @@ export class Base {
     }
 
     static async extSendMessageToBrowserTab(tabId, msgObj) {
-        const promise = await new Promise((resolve, reject) => {
-            chrome.tabs.sendMessage(tabId, msgObj, (response) => {
-                Base.logWarn("Response from browser tab", response);
+        Base.logInfo("Sending", msgObj, "to browser tab", tabId);
 
-                if (chrome.runtime.lastError) {
-                    return reject(chrome.runtime.lastError);
-                }
-                resolve(response);
+        try {
+            const promise = await new Promise((resolve, reject) => {
+                chrome.tabs.sendMessage(tabId, msgObj, (response) => {
+                    Base.logWarn("Response from browser tab", response);
+
+                    if (chrome.runtime.lastError) {
+                        return reject(chrome.runtime.lastError);
+                    }
+                    resolve(response);
+                });
             });
-        });
-
-        return promise;
+            return promise;
+        } catch (err) {
+            Base.logError("Sending Tab Error", err);
+        }
     }
 
     static async tabSendMessageToBackground(msgObj) {
-        const promise = await new Promise((resolve, reject) => {
-            chrome.runtime.sendMessage(msgObj, (response) => {
-                Base.logWarn("Response from background", response);
+        Base.logInfo("Sending", msgObj, "to background");
 
-                if (chrome.runtime.lastError) {
-                    return reject(chrome.runtime.lastError);
-                }
-                resolve(response);
+        try {
+            const promise = await new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage(msgObj, (response) => {
+                    Base.logWarn("Response from background", response);
+
+                    if (chrome.runtime.lastError) {
+                        return reject(chrome.runtime.lastError);
+                    }
+                    resolve(response);
+                });
             });
-        });
-
-        return promise;
+            return promise;
+        } catch (err) {
+            Base.logError("Sending Background Error", err);
+        }
     }
 
     static async delayTime(ms) {
         return new Promise((res) => {
             setTimeout(res, ms);
-            Base.logInfo(`Waiting for ${ms} ms`);
+            Base.logInfo(`wait for ${ms} ms...`);
         });
     }
 
@@ -1181,18 +1208,19 @@ export class Base {
         ...args
     ) {
         if (retryInterval === 0) {
-            retryInterval = await Base.getJsonStorage("ankiflashOptions", [
-                "retryInterval",
-            ]);
+            retryInterval = await Base.getJsonStorage(
+                `${chrome.runtime.id}Options`,
+                ["retryInterval"]
+            );
         }
 
         let result;
         let isStopped = false;
 
-        let maxChecks = parseInt(timeoutMilis / retryInterval);
+        const maxChecks = parseInt(timeoutMilis / retryInterval);
         for (let index = 0; index < maxChecks; index++) {
             result = await stopConditionFunc(...args);
-            Base.logWarn(
+            Base.logDebug(
                 "[waitUntil]",
                 stopConditionFunc.name,
                 "params",
@@ -1204,7 +1232,7 @@ export class Base {
             isStopped = result.isStopped;
 
             if (isStopped) {
-                Base.logWarn(
+                Base.logDebug(
                     "[waitUntil]",
                     stopConditionFunc.name,
                     "params",
@@ -1252,6 +1280,16 @@ export class Base {
         return hashHex;
     }
 
+    static downloadJsonFile(fileName, json) {
+        const textContent = URL.createObjectURL(
+            new Blob([Base.jsonToString(json, true)], {
+                type: "application/json",
+            })
+        );
+
+        Base.#downloadFileContent(fileName, textContent);
+    }
+
     static downloadTextFile(fileName, text) {
         const textContent = "data:text/plain;charset=utf-8," + text;
         Base.#downloadFileContent(fileName, textContent);
@@ -1289,7 +1327,7 @@ export class Base {
 
         for (const url of urls) {
             const partialFilePath =
-                filename || `AnkiFlash/${url.split("/").pop()}`;
+                filename || `${chrome.runtime.id}/${url.split("/").pop()}`;
 
             const downloadId = await chrome.downloads.download({
                 url: url,

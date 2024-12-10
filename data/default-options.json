@@ -2,5 +2,9 @@
     "retryTimes": 5,
     "retryCodes": [],
     "retryInterval": 3000,
-    "requestTimeout": 30
+    "requestTimeout": 30,
+    "traffic": {
+        "isBlocked": false,
+        "baseUrls": ["xxx"]
+    }
 }

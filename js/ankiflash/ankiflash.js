@@ -4,6 +4,9 @@ import { Translation } from "./dto/translation.js";
 import { Generator } from "./generator.js";
 
 $(document).ready(async () => {
+    // Preconfig
+    Common.presetOptions();
+
     // Reder UI fields
     await AnkiFlash.setupLayout();
 
@@ -22,10 +25,17 @@ $(document).ready(async () => {
 export class AnkiFlash {
     static async addHandlers() {
         $("#btnGenerate").click(async () => {
-            let genInputDto = {
-                words: (await Common.getTabStorage("inputTxt"))
-                    .split("\n")
-                    .filter(Boolean),
+            const inputWords = (await Common.getTabStorage("inputTxt"))
+                .split("\n")
+                .filter(Boolean);
+
+            if (inputWords.length === 0) {
+                alert("No word found! Please check your input!");
+                return;
+            }
+
+            const genInputDto = {
+                words: inputWords,
                 translation: new Translation(
                     await Common.getTabStorage("source"),
                     await Common.getTabStorage("target")
@@ -35,26 +45,37 @@ export class AnkiFlash {
                 mainDict: await Common.getTabStorage("mainDict"),
             };
 
-            let gen = new Generator(genInputDto);
+            const gen = new Generator(genInputDto);
             Common.logWarn("gen", gen);
 
-            let cards = await gen.generateCards();
+            const cards = await gen.generateCards();
             Common.logWarn("cards", cards);
 
-            await gen.generateCsv(cards);
+            if (
+                cards
+                    .map((c) => {
+                        return c.meaning;
+                    })
+                    .filter(Boolean).length > 0
+            ) {
+                await gen.generateCsv(cards);
+            }
+
             Common.logWarn(Constant.FINISHED_MSG);
         });
 
         $("#btnCancel").click(async () => {
             await Common.setTabStorage("isCanceled", true);
+            Common.logWarn(Constant.FINISHED_MSG);
         });
     }
 
     static async setupLayout() {
-        let fieldConfigs = [
+        const fieldConfigs = [
             {
-                fields: [{ id: "source", default: Constant.ENGLISH }],
-                handler: Common.inputChangedHandler,
+                fields: [
+                    { id: "source", default: Constant.ENGLISH, priority: 1 },
+                ],
                 options: [
                     {
                         value: Constant.VIETNAMESE,
@@ -73,19 +94,19 @@ export class AnkiFlash {
                         text: Constant.JAPANESE,
                     },
                 ],
-                triggers: [
-                    { id: "target", options: true, handler: true },
-                    { id: "mainDict", options: true, handler: true },
+                triggers: [{ id: "target" }, { id: "mainDict" }],
+            },
+            {
+                fields: [
+                    { id: "target", default: Constant.ENGLISH, priority: 2 },
                 ],
-            },
-            {
-                fields: [{ id: "target", default: Constant.ENGLISH }],
-                handler: Common.inputChangedHandler,
                 options: AnkiFlash.#getTargetAsOptions,
-                triggers: [{ id: "mainDict", options: true, handler: true }],
+                triggers: [{ id: "mainDict" }],
             },
             {
-                fields: [{ id: "mainDict", default: Constant.OXFORD }],
+                fields: [
+                    { id: "mainDict", default: Constant.OXFORD, priority: 3 },
+                ],
                 handler: AnkiFlash.#mainDictChangedHandler,
                 options: AnkiFlash.#getDictionaryAsOptions,
             },
@@ -94,7 +115,6 @@ export class AnkiFlash {
                     { id: "isOnline", default: true },
                     { id: "relatedWords", default: true },
                 ],
-                handler: Common.inputChangedHandler,
             },
             {
                 fields: [
@@ -105,7 +125,7 @@ export class AnkiFlash {
                 handler: AnkiFlash.#textboxChangedHandler,
             },
         ];
-        await Common.configUniversalFields(fieldConfigs);
+        await Common.universalSetupFields(fieldConfigs);
 
         // Reset value of output and failure boxes
         for (const fieldId of ["outputTxt", "failureTxt"]) {
@@ -162,7 +182,7 @@ export class AnkiFlash {
         );
 
         const [dictionaries] = Constant.SUPPORTED_TRANSLATIONS.filter((t) =>
-            t.translation.equals(translation)
+            translation.equals(t.translation)
         ).map((t) => t.dictionaries);
 
         return dictionaries.map((d) => {
@@ -178,6 +198,7 @@ export class AnkiFlash {
             Constant.KANTAN,
             Constant.OXFORD,
             Constant.WIKTIONARY,
+            Constant.LACVIET,
         ].includes(mainDict);
 
         if (isRelatedWordSupported) {

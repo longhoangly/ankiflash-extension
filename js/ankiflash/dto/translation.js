@@ -6,15 +6,15 @@ export class Translation {
         (this.source = source), (this.target = target);
     }
 
+    static getInstance(obj) {
+        return new Translation(obj.source, obj.target);
+    }
+
     equals(translation) {
-        if (translation instanceof Translation) {
-            return (
-                this.source === translation.source &&
-                this.target === translation.target
-            );
-        } else {
-            return false;
-        }
+        return (
+            this.source === translation.source &&
+            this.target === translation.target
+        );
     }
 
     belongTo(translations) {

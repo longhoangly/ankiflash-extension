@@ -16,30 +16,6 @@ export class Flash {
         return cardInputDto;
     }
 
-    static async downloadFiles(urls, filename = "") {
-        let downloadInfos = [];
-
-        for (const url of urls) {
-            const partialFilePath =
-                filename || `AnkiFlash/${url.split("/").pop()}`;
-
-            const downloadId = await chrome.downloads.download({
-                url: url,
-                filename: partialFilePath,
-                conflictAction: "overwrite",
-            });
-
-            downloadInfos.push({
-                url: url,
-                filename: partialFilePath,
-                downloadId: downloadId,
-            });
-        }
-
-        Common.logInfo("downloadInfos", downloadInfos);
-        return downloadInfos;
-    }
-
     static async buildExamples(exampleStrs, isJapanese = false) {
         let examples = [];
 

@@ -1,9 +1,9 @@
-import { Base } from "./base.js";
 import { Translation } from "../ankiflash/dto/translation.js";
+import { Base } from "./base.js";
 
-export class Constant extends Base {
+export class Constant {
     //=====FRAMEWORK=====
-    static TODAY = Constant.getJsonDate();
+    static TODAY = Base.getJsonDate();
     static AUTO_COMPLETE_FIELD_IDS = [];
     static FINISHED_MSG = "===>>>>>>> Finished Execution ===>>>>>>>";
 
@@ -19,9 +19,10 @@ export class Constant extends Base {
     // OXFORD
     static OX_BASE_URL = "https://www.oxfordlearnersdictionaries.com";
     static OX_EN_EN_SEARCH_URL = `${Constant.OX_BASE_URL}/search/english/direct/?q={}`;
+    static OX_DETAIL_URL = `${Constant.OX_BASE_URL}/definition/english/{}`;
 
     // LACVIET
-    static LV_BASE_URL = "http://tratu.coviet.vn";
+    static LV_BASE_URL = "https://tratu.coviet.vn";
     static LV_SEARCH_URL = `${Constant.LV_BASE_URL}/ajax/TraTu.Util.AjaxFunction,App_Code.ashx?_method=GetComplete&_session=no`;
 
     // CAMBRIDGE

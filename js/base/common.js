@@ -1,6 +1,6 @@
-import { Constant } from "./constant.js";
+import { Base } from "./base.js";
 
-export class Common extends Constant {
+export class Common extends Base {
     static UI_FIELDS = {};
 
     static addHyperLink(params) {
@@ -30,6 +30,7 @@ export class Common extends Constant {
     static addImage(params) {
         params.fieldId = params.fieldId || "";
         params.className = params.className || "";
+
         Common.requiredField(params.caption, "params.caption");
         Common.requiredField(params.imgSrc, "params.imgSrc");
 
@@ -50,8 +51,8 @@ export class Common extends Constant {
         img.style.marginBottom = "10px";
         divCon.appendChild(img);
 
-        if (fieldId) {
-            document.getElementById(`#${fieldId}`).appendChild(divCon);
+        if (params.fieldId) {
+            document.getElementById(`#${params.fieldId}`).appendChild(divCon);
         } else {
             document.body.firstElementChild.appendChild(divCon);
         }
@@ -83,7 +84,7 @@ export class Common extends Constant {
 
         await Common.chromeDownloadFiles(
             [shotContent],
-            `Ankiflash_Screenshots/Chrome_Screenshot_${suffix}.JPEG`
+            `${chrome.runtime.id}_Screenshots/Chrome_Screenshot_${suffix}.JPEG`
         );
     }
 
@@ -93,7 +94,7 @@ export class Common extends Constant {
         let date = new Date(timestamp);
         Common.logDebug("Localtime", date.toLocaleString());
 
-        let localTimezone = (-1 * date.getTimezoneOffset()) / 60;
+        const localTimezone = (-1 * date.getTimezoneOffset()) / 60;
         Common.logDebug("Localtimezone", localTimezone);
 
         date.setHours(date.getHours() - localTimezone);
@@ -112,7 +113,7 @@ export class Common extends Constant {
         return date.getTime();
     }
 
-    static async bootsAlert(params) {
+    static async pushAlert(params) {
         params.isSuccess = params.isSuccess || true;
         params.fieldId = params.fieldId || "alert";
         params.timeout = params.timeout || 5;
@@ -140,13 +141,13 @@ export class Common extends Constant {
             $(`[name='${fieldId}']`).prop("type");
 
         let fieldType = "TEXTBOX";
-        if (tagName === "SELECT") {
+        if (tagName === "TEXTAREA") {
+            fieldType = "TEXTAREA";
+        } else if (tagName === "SELECT") {
             fieldType = "DROPDOWN";
-        }
-        if (tagName === "INPUT" && type === "checkbox") {
+        } else if (tagName === "INPUT" && type === "checkbox") {
             fieldType = "CHECKBOX";
-        }
-        if (tagName === "INPUT" && type === "radio") {
+        } else if (tagName === "INPUT" && type === "radio") {
             fieldType = "RADIO";
         }
         Common.logDebug(`Field ${fieldId} type is ${fieldType}`);
@@ -154,57 +155,87 @@ export class Common extends Constant {
         return fieldType;
     }
 
-    static async configUniversalFields(configs) {
-        for (const config of configs) {
-            for (let field of config.fields) {
-                field.handler = field.handler || config.handler;
-                field.isStartupHandler =
-                    field.isStartupHandler || config.isStartupHandler || true;
+    static async universalSetupFields(configs) {
+        const settingFieldIds = [];
+        const prioritizedFields = [];
+        const noPriorityFields = [];
 
-                field.options = field.options || config.options;
-                field.isStorageOptions =
-                    field.isStorageOptions || config.isStorageOptions || true;
+        for (const config of configs) {
+            for (const field of config.fields) {
+                field.handler =
+                    field.handler ||
+                    config.handler ||
+                    Common.inputChangedHandler;
 
                 field.type = Common.#getFieldType(field.id);
-                field.autocomplete =
-                    field.autocomplete || config.autocomplete || false;
+                field.options = field.options || config.options;
                 field.triggers = field.triggers || config.triggers || [];
+                field.datePicker = field.datePicker || config.datePicker;
 
-                Common.UI_FIELDS[`${field.id}Config`] = field;
+                const storedField = Common.UI_FIELDS[`${field.id}Config`];
+                const combinedField = {
+                    ...storedField,
+                    ...field,
+                };
+
+                Common.UI_FIELDS[`${field.id}Config`] = combinedField;
+                settingFieldIds.push(field.id);
+
+                if (field.priority) {
+                    prioritizedFields.push(field);
+                } else {
+                    noPriorityFields.push(field);
+                }
             }
         }
 
-        for (const [_, field] of Object.entries(Common.UI_FIELDS)) {
-            for (let trigger of field.triggers) {
-                trigger.optionsIndex = Object.keys(trigger).indexOf("options");
-                trigger.handlerIndex = Object.keys(trigger).indexOf("handler");
-
-                const triggerField = Common.UI_FIELDS[`${trigger.id}Config`];
-                trigger.field = triggerField;
+        for (let field of prioritizedFields.sort((a, b) => {
+            a.priority - b.priority;
+        })) {
+            field = Common.UI_FIELDS[`${field.id}Config`];
+            if (!field.initialized) {
+                Common.logInfo(
+                    field.priority,
+                    "initialized proritized field",
+                    field
+                );
+                await Common.#configFieldValues(field);
+                await field.handler({
+                    data: { fieldId: field.id },
+                });
+                field.initialized = true;
             }
         }
 
-        for (const [_, field] of Object.entries(Common.UI_FIELDS)) {
-            Common.logWarn("Init field config", field);
-
-            // init options (before init value)
-            await Common.#configFieldOptions(field);
-
-            // init value (have to be later than init options)
-            let fieldValue = await Common.getTabStorage(field.id);
-            if (fieldValue === undefined) {
-                fieldValue = field.default;
+        for (let field of noPriorityFields) {
+            field = Common.UI_FIELDS[`${field.id}Config`];
+            if (!field.initialized) {
+                Common.logInfo("initialized normal field", field);
+                Common.#configFieldValues(field).then(() => {
+                    field.handler({
+                        data: { fieldId: field.id },
+                    });
+                });
+                field.initialized = true;
             }
-            await Common.setFieldValue(field.id, fieldValue);
+        }
 
-            // init handler
+        for (const fieldId of settingFieldIds) {
+            const field = Common.UI_FIELDS[`${fieldId}Config`];
+
+            Common.logDebug("init field's config", field);
+            for (const trigger of field.triggers) {
+                trigger.field = Common.UI_FIELDS[`${trigger.id}Config`];
+            }
+
+            $(`#${field.id}`).off();
             switch (field.type) {
                 case "CHECKBOX":
                     $(`#${field.id}`).click(async () => {
                         await field.handler({
                             data: { fieldId: field.id },
                         });
-                        await Common.#configFieldTriggers(field.triggers);
+                        await Common.#configFieldTriggers(field);
                     });
                     break;
                 case "RADIO":
@@ -212,7 +243,7 @@ export class Common extends Constant {
                         await field.handler({
                             data: { fieldId: field.id },
                         });
-                        await Common.#configFieldTriggers(field.triggers);
+                        await Common.#configFieldTriggers(field);
                     });
                     break;
                 default:
@@ -220,146 +251,142 @@ export class Common extends Constant {
                         await field.handler({
                             data: { fieldId: field.id },
                         });
-                        await Common.#configFieldTriggers(field.triggers);
+                        await Common.#configFieldTriggers(field);
                     });
                     break;
             }
-
-            // startup handler
-            if (field.isStartupHandler) {
-                await field.handler({ data: { fieldId: field.id } });
-            }
         }
     }
 
-    static async #configFieldOptions(source) {
-        if (Array.isArray(source.options)) {
-            await Common.#setFieldOptions(source.id, source.options);
-        } else if (source.options) {
-            let optionsKey = `${source.id}Options`;
-            let storageOptions = await Common.getTabStorage(optionsKey);
+    static async #configFieldTriggers(field) {
+        for (const trigger of field.triggers) {
+            Common.logInfo(`${field.id} triggers ${trigger.id}'s options...`);
+            await Common.#configFieldValues(trigger.field, true);
 
-            let createdKey = `${source.id}OptionsCreated`;
-            let created = await Common.getTabStorage(createdKey);
-
-            if (
-                !storageOptions ||
-                source.isStorageOptions ||
-                // refresh options list after one day
-                Date.now() - created > 24 * 60 * 60 * 1000
-            ) {
-                storageOptions = await source.options({
-                    data: { fieldId: source.id },
-                });
-                await Common.setTabStorage(optionsKey, storageOptions);
-                await Common.setTabStorage(createdKey, Date.now());
-            }
-            await Common.#setFieldOptions(source.id, storageOptions);
-        }
-    }
-
-    static async #configFieldTriggers(triggers) {
-        for (const trigger of triggers) {
-            if (trigger.handlerIndex < trigger.optionsIndex) {
-                if (trigger.handler) {
-                    await trigger.field.handler({
-                        data: { fieldId: trigger.id },
-                    });
-                }
-                if (trigger.options) {
-                    await Common.#configFieldOptions(trigger.field);
-                }
-            } else {
-                if (trigger.options) {
-                    await Common.#configFieldOptions(trigger.field);
-                }
-                if (trigger.handler) {
-                    await trigger.field.handler({
-                        data: { fieldId: trigger.id },
-                    });
-                }
-            }
-        }
-    }
-
-    static async #autoCompleteFieldHandler(input, fieldId) {
-        Common.logInfo("Autocomplete field value changed", fieldId, input);
-
-        if (input !== undefined && input.length >= 3) {
-            let histories =
-                (await Common.getTabStorage(`${fieldId}-history`)) || [];
-
-            histories = histories.reverse();
-            if (!histories.includes(input) && input !== undefined) {
-                histories.push(input);
-            }
-
-            if (histories.length > 100) {
-                histories = histories.slice(
-                    histories.length - 100,
-                    histories.length
-                );
-            }
-            histories = histories.reverse();
-            await Common.setTabStorage(`${fieldId}-history`, histories);
-        }
-
-        let histories =
-            (await Common.getTabStorage(`${fieldId}-history`)) || [];
-        await Common.#createAutoCompleteField(fieldId, histories);
-    }
-
-    static async #createAutoCompleteField(fieldId, source) {
-        Common.logInfo("Create autocomplete field", fieldId, source);
-
-        $(`#${fieldId}`)
-            .autocomplete({
-                minLength: 0,
-                source: source,
-                select: async (event, ui) => {
-                    $(`#${fieldId}`).val(ui.item.label);
-                    await Common.setTabStorage(fieldId, ui.item.label);
-                    Common.logInfo(`Autocomplete '${fieldId}'`, ui.item);
-                },
-            })
-            .on("focus", async () => {
-                $(`#${fieldId}`).autocomplete("search", $(`#${fieldId}`).val());
-            })
-            .on("blur", async () => {
-                $(`#${fieldId}`).val(await Common.getTabStorage(fieldId));
+            Common.logInfo(`${field.id} triggers ${trigger.id}'s handler...`);
+            await trigger.field.handler({
+                data: { fieldId: trigger.id },
             });
+        }
     }
 
-    static async #setFieldOptions(fieldId, options) {
+    static async #configFieldValues(field, isExtTriggered) {
+        if (Array.isArray(field.options)) {
+            await Common.#setFieldOptions(field, field.options);
+        } else if (field.options) {
+            const optionsKey = `${field.id}Options`;
+
+            let options = (await Common.getTabStorage(optionsKey)) || [];
+            if (options.length > 0) {
+                await Common.#setFieldOptions(field, options);
+            }
+
+            if (isExtTriggered || options.length === 0) {
+                options = await field.options({
+                    data: { fieldId: field.id },
+                });
+
+                await Common.#setFieldOptions(field, options);
+                await Common.setTabStorage(optionsKey, options);
+            } else {
+                new Promise((resolve, _) => {
+                    resolve(
+                        field.options({
+                            data: { fieldId: field.id },
+                        })
+                    );
+                }).then((opts) => {
+                    Common.setTabStorage(optionsKey, opts);
+                });
+            }
+        } else {
+            // set value
+            let fieldValue = await Common.getTabStorage(field.id);
+            if (fieldValue === undefined) {
+                fieldValue = field.default;
+            }
+            await Common.setFieldValue(field.id, fieldValue);
+
+            // setup date picker
+            if (field.datePicker) {
+                Common.logInfo(`[${field.id}] is configured as date picker...`);
+
+                $(`#${field.id}`).datepicker({
+                    dateFormat: "yy-mm-dd",
+                    onSelect: async (dateTxt, inst) => {
+                        await Common.inputChangedHandler({
+                            data: { fieldId: field.id },
+                        });
+                    },
+                    ...field.datePicker,
+                });
+            }
+        }
+    }
+
+    static async #setFieldOptions(field, options) {
+        let selectedOption;
         if (options.length === 0) {
             options = [{ value: "Not Available", text: "Not Available" }];
-            await Common.setFieldValue(fieldId, undefined);
-            Common.disableElement(`#${fieldId}`);
+            Common.disableElement(`#${field.id}`);
         } else {
-            let storageValue = await Common.getTabStorage(fieldId);
-            if (
-                !options
-                    .map((o) => String(o.value))
-                    .includes(String(storageValue))
-            ) {
-                storageValue = options[options.length - 1].value;
+            selectedOption = await Common.getTabStorage(field.id);
+            if (selectedOption === undefined) {
+                selectedOption = field.default;
             }
-            await Common.setFieldValue(fieldId, storageValue);
-            Common.enableElement(`#${fieldId}`);
+
+            if (!options.map((o) => o.value).includes(selectedOption)) {
+                selectedOption = options[0].value;
+            }
+            Common.enableElement(`#${field.id}`);
         }
 
-        $(`#${fieldId}`).find("option").remove();
-        for (const option of options) {
-            $("<option/>")
-                .val(option.value)
-                .html(option.text)
-                .appendTo(`#${fieldId}`);
+        if (options.length > 20) {
+            $(`#${field.id}`).select2({
+                theme: "classic",
+                data: options.map((o) => {
+                    return { id: o.value, text: o.text };
+                }),
+            });
+        } else {
+            $(`#${field.id}`).find("option").remove();
+            for (const option of options) {
+                $("<option/>")
+                    .val(option.value)
+                    .html(option.text)
+                    .appendTo(`#${field.id}`);
+            }
         }
+
+        await Common.setFieldValue(field.id, selectedOption);
+    }
+
+    static async setFieldValue(fieldId, value) {
+        const fieldType = Common.#getFieldType(fieldId);
+        switch (fieldType) {
+            case "CHECKBOX":
+                $(`#${fieldId}`).prop("checked", value);
+                break;
+            case "RADIO":
+                const radio = `input:radio[name='${fieldId}'][value='${value}']`;
+                $(radio).prop("checked", true);
+                break;
+            default:
+                $(`#${fieldId}`).val(value).trigger("change");
+
+                const fieldConfig = Common.UI_FIELDS[`${fieldId}Config`];
+                if (fieldType === "TEXTBOX" && !fieldConfig.datePicker) {
+                    await Common.#autoCompleteFieldHandler(value, fieldId);
+                }
+                break;
+        }
+
+        Common.logDebug(`[setFieldValue] set storage... [${fieldId}]`, value);
+        await Common.setTabStorage(fieldId, value);
     }
 
     static async inputChangedHandler(event) {
         const fieldId = event.data.fieldId;
-        Common.logWarn(`Field '${fieldId}' input changed`);
 
         let input;
         const fieldType = Common.#getFieldType(fieldId);
@@ -372,74 +399,104 @@ export class Common extends Constant {
                 break;
             case "DROPDOWN":
                 input = $(`#${fieldId} option:selected`).val();
+
+                if ($(`#${fieldId}`).find("option").length > 20) {
+                    const [selectedItem] = $(`#${fieldId}`).select2("data");
+                    $(`#select2-${fieldId}-container`).text(selectedItem.text);
+                }
+
                 break;
             default:
                 input = $(`#${fieldId}`).val();
                 break;
         }
+
         await Common.setTabStorage(fieldId, input);
         Common.logInfo(
-            `[inputChangedHandler] Set storage... [${fieldId}] [${input}]`
+            `[inputChangedHandler] set storage... [${fieldId}]`,
+            input
         );
 
-        let output = await Common.getTabStorage(fieldId);
-        Common.logDebug(
-            `[inputChangedHandler] Get storage... [${fieldId}] [${output}]`
-        );
-
-        const field = Common.UI_FIELDS[`${fieldId}Config`];
-        if (field.autocomplete) {
+        const fieldConfig = Common.UI_FIELDS[`${fieldId}Config`];
+        if (fieldType === "TEXTBOX" && !fieldConfig.datePicker) {
             await Common.#autoCompleteFieldHandler(input, fieldId);
         }
 
         return input;
     }
 
-    static async setFieldValue(fieldId, value) {
-        const fieldType = Common.#getFieldType(fieldId);
-        switch (fieldType) {
-            case "CHECKBOX":
-                $(`#${fieldId}`).prop("checked", value);
-                break;
-            case "RADIO":
-                $(`input[name='${fieldId}'][value='${value}']`).click();
-                break;
-            default:
-                await $(`#${fieldId}`).val(value);
-                break;
+    static async #autoCompleteFieldHandler(input, fieldId) {
+        if (input !== undefined && input.length >= 3) {
+            let histories =
+                (await Common.getTabStorage(`${fieldId}History`)) || [];
+
+            histories = await histories.reverse();
+            if (!histories.includes(input) && input !== undefined) {
+                histories.push(input);
+            }
+
+            if (histories.length > 100) {
+                histories = histories.slice(
+                    histories.length - 100,
+                    histories.length
+                );
+            }
+            histories = await histories.reverse();
+            await Common.setTabStorage(`${fieldId}History`, histories);
         }
 
-        Common.logInfo(
-            `[setFieldValue] Set storage... [${fieldId}] [${value}]`
-        );
+        const histories =
+            (await Common.getTabStorage(`${fieldId}History`)) || [];
+        await Common.#createAutoCompleteField(fieldId, histories);
+    }
 
-        await Common.setTabStorage(fieldId, value);
-        $(`#${fieldId}`).trigger("input");
+    static async #createAutoCompleteField(fieldId, source) {
+        $(`#${fieldId}`)
+            .autocomplete({
+                minLength: 0,
+                source: source,
+                select: async (event, ui) => {
+                    $(`#${fieldId}`).val(ui.item.label);
+                    await Common.setTabStorage(fieldId, ui.item.label);
+                    Common.logInfo(
+                        `autocomplete selected option '${fieldId}'`,
+                        ui.item
+                    );
+                },
+            })
+            .on("focus", async () => {
+                $(`#${fieldId}`).autocomplete("search", $(`#${fieldId}`).val());
+            })
+            .on("blur", async () => {
+                $(`#${fieldId}`).val(await Common.getTabStorage(fieldId));
+            });
     }
 
     static async presetOptions(
         jsonPath = "../../data/default-options.json",
-        storageConfigName = "ankiflashOptions"
+        storageConfigName = `${chrome.runtime.id}Options`
     ) {
-        Common.logInfo(`Loading config file ${jsonPath} into the storage...`);
-        let jsonConfig = await Common.fetchJsonContent(jsonPath);
+        Common.logInfo(
+            `Loading config file ${jsonPath} into the storage... ${storageConfigName}`
+        );
+        const jsonConfig = await Common.fetchJsonContent(jsonPath);
         await Common.setStorage(storageConfigName, jsonConfig);
     }
 
     static async blockTraffics() {
-        let isBlocked = await Common.getJsonStorage("ankiflashOptions", [
-            "traffic",
-            "isBlocked",
-        ]);
+        const isBlocked = await Common.getJsonStorage(
+            `${chrome.runtime.id}Options`,
+            ["traffic", "isBlocked"]
+        );
 
-        let trafficUrls = await Common.getJsonStorage("ankiflashOptions", [
-            "traffic",
-            "baseUrls",
-        ]);
+        const trafficUrls = await Common.getJsonStorage(
+            `${chrome.runtime.id}Options`,
+            ["traffic", "baseUrls"]
+        );
 
         trafficUrls.forEach(async (domain) => {
             if (isBlocked) {
-                let ruleId = Common.randomInt(1000, 99999999);
+                const ruleId = Common.randomInt(1000, 99999999);
                 Common.logInfo("Add blocking rules", domain, ruleId);
 
                 chrome.declarativeNetRequest.updateDynamicRules({
@@ -457,7 +514,7 @@ export class Common extends Constant {
                 });
 
                 Common.logInfo(`Query existing tabs *://*.${domain}/*`);
-                let tabs = await chrome.tabs.query({
+                const tabs = await chrome.tabs.query({
                     url: `*://*.${domain}/*`,
                 });
 
@@ -467,27 +524,24 @@ export class Common extends Constant {
         });
     }
 
-    static async clearNetworkRules() {
+    static async clearNetRules() {
         const currentRules = await chrome.declarativeNetRequest.getDynamicRules();
-        Common.logInfo("currentRules", currentRules);
+        Common.logInfo("Removing NET rules", currentRules);
 
         await chrome.declarativeNetRequest.updateDynamicRules({
             removeRuleIds: currentRules.map((rule) => rule.id),
         });
     }
 
-    static async setCookie(ruleId, cookieKey, baseUrl, extraCookies = []) {
-        let cookieString = await Common.getTabStorage(cookieKey);
-
-        if (extraCookies.length > 0) {
-            let extraCookieString = extraCookies
-                .map((c) => `${c.name}=${c.value}`)
-                .join("; ");
-            cookieString = `${extraCookieString}; ${cookieString}`;
-        }
+    static async setCookie(
+        cookieStorageKey,
+        baseUrl,
+        ruleId = Common.randomInt(1000, 99999999)
+    ) {
+        let cookieString = await Common.getTabStorage(cookieStorageKey);
 
         Common.logInfo("Setting cookie", {
-            cookieKey: cookieKey,
+            cookieStorageKey: cookieStorageKey,
             baseUrl: baseUrl,
             cookieString: cookieString,
         });
@@ -512,7 +566,7 @@ export class Common extends Constant {
                 },
             };
 
-            if (baseUrl.includes("thub")) {
+            if (baseUrl.includes("xxx")) {
                 addRule.condition.domainType = "thirdParty";
             }
 

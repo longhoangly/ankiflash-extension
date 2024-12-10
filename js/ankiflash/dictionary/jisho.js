@@ -45,7 +45,7 @@ export class Jisho extends Dictionary {
         Common.logWarn(`[getMeaning] ${Jisho.name}`, cardInputDto);
     }
 
-    async #getJishoDocument(cardInputDto) {
+    async #getDocument(cardInputDto) {
         let [
             standardizedWord,
         ] = this.genInputDto.standardizedWords.filter((w) =>
@@ -65,12 +65,12 @@ export class Jisho extends Dictionary {
         return standardizedWord.jishoDocument;
     }
 
-    async #getJishoCss() {
+    async #getCss() {
         if (this.genInputDto.jishoCss) {
             return this.genInputDto.jishoCss;
         }
 
-        let urlContent = await Common.getUrlContent("xxx");
+        const urlContent = await Common.getUrlContent("xxx");
 
         this.genInputDto.jishoCss = urlContent
             .replaceAll("\n", " ")

@@ -22,14 +22,15 @@ export class Generator {
             await Common.setFieldValue(fieldId, "");
         }
 
-        let dictionary = Generator.#getDictInstance(this.genInputDto);
+        const dictionary = Generator.#getDictInstance(this.genInputDto);
         this.genInputDto.standardizedWords = await dictionary.standardizedWords();
+        Common.logInfo("standardizedWords", this.genInputDto.standardizedWords);
 
         let outputCards = [];
-        for (const standardizedWord of this.genInputDto.standardizedWords) {
-            let cardInputDto = await Flash.convertGenToCardDto(
+        for (const stdWord of this.genInputDto.standardizedWords) {
+            const cardInputDto = await Flash.convertGenToCardDto(
                 this.genInputDto,
-                standardizedWord
+                stdWord
             );
 
             outputCards.push(
@@ -60,7 +61,8 @@ export class Generator {
             card.tag = await dictionary.getTag(cardInputDto);
             card.status = "SUCCESS";
 
-            let currentOutput = (await Common.getTabStorage("outputTxt")) || "";
+            const currentOutput =
+                (await Common.getTabStorage("outputTxt")) || "";
             await Common.setFieldValue(
                 "outputTxt",
                 card.meaning + "\n" + currentOutput
@@ -71,7 +73,7 @@ export class Generator {
             card.status = "FAILED";
             card.errorMessage = `${cardInputDto.standardizedWord.word} - failed to create flash card!`;
 
-            let currentFailure =
+            const currentFailure =
                 (await Common.getTabStorage("failureTxt")) || "";
             await Common.setFieldValue(
                 "failureTxt",
@@ -83,7 +85,7 @@ export class Generator {
     }
 
     async #calculateProgress(cards) {
-        let percentage = parseInt(
+        const percentage = parseInt(
             (cards.length / this.genInputDto.standardizedWords.length) * 100
         );
 
@@ -139,21 +141,26 @@ export class Generator {
             ]);
         }
 
-        var deckUrl = URL.createObjectURL(
+        const deckUrl = URL.createObjectURL(
             new Blob(cardLines, {
                 type: "text/csv",
             })
         );
-        await Flash.downloadFiles([deckUrl], `AnkiFlash/${Constant.ANKI_DECK}`);
+        await Common.chromeDownloadFiles(
+            [deckUrl],
+            Constant.ANKI_DECK
+            // `${chrome.runtime.id}/${Constant.ANKI_DECK}`
+        );
 
-        let mappingUrl = URL.createObjectURL(
+        const mappingUrl = URL.createObjectURL(
             new Blob(mappingLines, {
                 type: "text/csv",
             })
         );
-        await Flash.downloadFiles(
+        await Common.chromeDownloadFiles(
             [mappingUrl],
-            `AnkiFlash/${Constant.MAPPING_CSV}`
+            Constant.MAPPING_CSV
+            // `${chrome.runtime.id}/${Constant.MAPPING_CSV}`
         );
     }
 

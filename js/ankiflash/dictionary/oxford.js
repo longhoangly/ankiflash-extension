@@ -13,11 +13,9 @@ export class Oxford extends Dictionary {
 
         let standardizedWords = [];
         for (const word of this.genInputDto.words) {
-            standardizedWords.push({
-                word: word,
-                wordId: word,
-                wordOri: word,
-            });
+            standardizedWords = standardizedWords.concat(
+                await this.#getStandardizedWords(word)
+            );
         }
         return standardizedWords;
     }
@@ -25,10 +23,10 @@ export class Oxford extends Dictionary {
     async getWordTypes(cardInputDto) {
         Common.logWarn(`[getWordTypes] ${Oxford.name}`, cardInputDto);
 
-        let wordTypes = $(await this.#getOxfordDocument(cardInputDto)).find(
+        let wordTypes = $(await this.#getDocument(cardInputDto)).find(
             "span.pos"
         );
-        wordTypes = `(${$(wordTypes[0].outerHTML).text()})`;
+        wordTypes = `(${$(wordTypes[0]).text()})`;
 
         Common.logWarn("wordTypes", wordTypes);
         return wordTypes;
@@ -37,12 +35,10 @@ export class Oxford extends Dictionary {
     async getPhonetics(cardInputDto) {
         Common.logWarn(`[getPhonetics] ${Oxford.name}`, cardInputDto);
 
-        let phonetics = $(await this.#getOxfordDocument(cardInputDto)).find(
+        let phonetics = $(await this.#getDocument(cardInputDto)).find(
             "span.phon"
         );
-        phonetics = `${$(phonetics[0].outerHTML).text()} ${$(
-            phonetics[1].outerHTML
-        ).text()}`;
+        phonetics = `${$(phonetics[0]).text()} ${$(phonetics[1]).text()}`;
 
         Common.logWarn("phonetics", phonetics);
         return phonetics;
@@ -51,21 +47,21 @@ export class Oxford extends Dictionary {
     async getExamples(cardInputDto, count = 5) {
         Common.logWarn(`[getExamples] ${Oxford.name}`, cardInputDto);
 
-        let exampleTags = $(await this.#getOxfordDocument(cardInputDto)).find(
+        let exampleTags = $(await this.#getDocument(cardInputDto)).find(
             "span.x"
         );
         exampleTags = exampleTags.slice(0, count);
 
         let examples = [];
         for (const exampleTag of exampleTags) {
-            examples.push($(exampleTag.outerHTML).text());
+            examples.push($(exampleTag).text());
         }
 
         if (examples.length === 0) {
             return Constant.NO_EXAMPLE;
         }
 
-        let word = cardInputDto.standardizedWord.word;
+        const word = cardInputDto.standardizedWord.word;
         for (let i = 0; i < examples.length; i++) {
             if (examples[i].includes(word)) {
                 examples[i] = examples[i].replaceAll(word, `{{c1::${word}}}`);
@@ -82,15 +78,15 @@ export class Oxford extends Dictionary {
 
         let soundLinks = [];
         for (const selector of ["div.pron-uk", "div.pron-us"]) {
-            let [soundTag] = $(
-                await this.#getOxfordDocument(cardInputDto)
-            ).find(selector);
-            soundLinks.push($(soundTag.outerHTML).attr("data-src-mp3"));
+            const [soundTag] = $(await this.#getDocument(cardInputDto)).find(
+                selector
+            );
+            soundLinks.push($(soundTag).attr("data-src-mp3"));
         }
 
         Common.logWarn("soundLinks", soundLinks);
         if (!cardInputDto.isOnline) {
-            await Flash.downloadFiles(soundLinks);
+            await Common.chromeDownloadFiles(soundLinks);
         }
 
         let sounds = [];
@@ -113,17 +109,16 @@ export class Oxford extends Dictionary {
     async getImages(cardInputDto) {
         Common.logWarn(`[getImages] ${Oxford.name}`, cardInputDto);
 
-        let [imageTag] = $(await this.#getOxfordDocument(cardInputDto)).find(
+        const [imageTag] = $(await this.#getDocument(cardInputDto)).find(
             "a.topic"
         );
         if (imageTag) {
-            let imageLink = $(imageTag.outerHTML).attr("href");
-
-            let image = imageLink;
+            const imageLink = $(imageTag).attr("href");
             Common.logWarn("imageLink", imageLink);
 
+            let image = imageLink;
             if (!cardInputDto.isOnline) {
-                await Flash.downloadFiles([imageLink]);
+                await Common.chromeDownloadFiles([imageLink]);
                 image = imageLink.split("/").pop();
             }
 
@@ -139,8 +134,8 @@ export class Oxford extends Dictionary {
     async getMeaning(cardInputDto) {
         Common.logWarn(`[getMeaning] ${Oxford.name}`, cardInputDto);
 
-        let [sense] = $(await this.#getOxfordDocument(cardInputDto)).find(
-            "ol.senses_multiple"
+        const [sense] = $(await this.#getDocument(cardInputDto)).find(
+            'ol[class*="sense"]'
         );
 
         let meaning = sense.outerHTML
@@ -153,35 +148,90 @@ export class Oxford extends Dictionary {
             '"ring-links-box" style="display: none;"'
         );
 
-        return `<div class="content-container"> ${meaning} </div> <style> ${await this.#getOxfordCss()} </style>`;
+        return `<div class="content-container"> ${meaning} </div> <style> ${await this.#getCss()} </style>`;
     }
 
-    async #getOxfordDocument(cardInputDto) {
+    async #getStandardizedWords(word) {
+        const url = Constant.OX_EN_EN_SEARCH_URL.format(word);
+        const html = await Common.getUrlContent(url);
+
+        let standardizedWords = [];
+        if (html) {
+            const links = $(html).find("link[rel='canonical']").prevObject;
+            for (const link of links) {
+                const href = $(link).attr("href");
+                if (href && href.includes("definition/english")) {
+                    const [matched] = $(html).find(".headword");
+                    const matchedWord = $(matched).text();
+
+                    if (matchedWord) {
+                        standardizedWords.push({
+                            word: matchedWord,
+                            wordId: href.split("/").pop(),
+                            wordOri: word,
+                        });
+                    }
+                }
+            }
+
+            if (this.genInputDto.relatedWords) {
+                const matcheds = $(html).find("dl.accordion.ui-grad");
+                for (const matched of matcheds) {
+                    for (const li of $(matched).find("li")) {
+                        for (const span of $(li).find("span")) {
+                            $(span).children().remove();
+                            const spanTxt = $(span).text().trim();
+                            Common.logWarn("spanTxt", spanTxt);
+                            if (
+                                spanTxt
+                                    .toLowerCase()
+                                    .includes(word.toLowerCase())
+                            ) {
+                                const [link] = $(li).find("a");
+                                const href = $(link).attr("href");
+
+                                const wordId = href.split("/").pop();
+                                standardizedWords.push({
+                                    word: spanTxt,
+                                    wordId: wordId,
+                                    wordOri: word,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Common.logInfo("Words not found", word);
+        }
+
+        return standardizedWords;
+    }
+
+    async #getDocument(cardInputDto) {
         let [
             standardizedWord,
         ] = this.genInputDto.standardizedWords.filter((w) =>
             Common.compareTwoJsonObjects(cardInputDto.standardizedWord, w)
         );
 
-        if (standardizedWord.oxfordDocument) {
-            return standardizedWord.oxfordDocument;
+        if (!standardizedWord.oxfordDocument) {
+            standardizedWord.oxfordDocument = await Common.fetchNeutral({
+                method: "GET",
+                respType: Common.RESP_TYPE_ENUM.TEXT,
+                url: Constant.OX_DETAIL_URL.format(standardizedWord.wordId),
+            });
         }
-
-        standardizedWord.oxfordDocument = await Common.fetchNeutral({
-            method: "GET",
-            respType: Common.RESP_TYPE_ENUM.TEXT,
-            url: Constant.OX_EN_EN_SEARCH_URL.format(standardizedWord.wordId),
-        });
 
         return standardizedWord.oxfordDocument;
     }
 
-    async #getOxfordCss() {
+    async #getCss() {
         if (this.genInputDto.oxfordCss) {
             return this.genInputDto.oxfordCss;
         }
 
-        let urlContent = await Common.getUrlContent(
+        const urlContent = await Common.getUrlContent(
             `${Constant.OX_BASE_URL}/external/styles/oald10.css?version=2.3.61`
         );
 

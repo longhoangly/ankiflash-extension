@@ -8,12 +8,21 @@ export class LacViet extends Dictionary {
         super(genInputDto);
     }
 
+    async standardizedWords() {
+        Common.logWarn(`[standardizedWords] ${LacViet.name}`);
+
+        let standardizedWords = [];
+        for (const word of this.genInputDto.words) {
+            standardizedWords = standardizedWords.concat(
+                await this.#getStandardizedWords(word)
+            );
+        }
+        return standardizedWords;
+    }
+
     async getWordTypes(cardInputDto) {
         Common.logWarn(`[getWordTypes] ${LacViet.name}`, cardInputDto);
-
-        let lvDocument = await this.#getLacVietDocument();
-        Common.logWarn("lvDocument", lvDocument);
-
+        const lvDocument = await this.#getDocument(cardInputDto);
         return lvDocument;
     }
 
@@ -37,90 +46,106 @@ export class LacViet extends Dictionary {
         Common.logWarn(`[getMeaning] ${LacViet.name}`, cardInputDto);
     }
 
-    async #getLacVietDocument(cardInputDto) {
+    async #getStandardizedWords(word) {
+        let payload = {
+            word: word,
+            amount: 12,
+            dong: "Đóng",
+            showinlang: 1,
+        };
+
+        if (
+            new Translation(Constant.VIETNAMESE, Constant.ENGLISH).equals(
+                this.genInputDto.translation
+            )
+        ) {
+            payload.dict = "V-A";
+        } else if (
+            new Translation(Constant.VIETNAMESE, Constant.FRENCH).equals(
+                this.genInputDto.translation
+            )
+        ) {
+            payload.dict = "V-F";
+        } else if (
+            new Translation(Constant.VIETNAMESE, Constant.VIETNAMESE).equals(
+                this.genInputDto.translation
+            )
+        ) {
+            payload.dict = "V-V";
+        } else if (
+            new Translation(Constant.ENGLISH, Constant.VIETNAMESE).equals(
+                this.genInputDto.translation
+            )
+        ) {
+            payload.dict = "A-V";
+        } else if (
+            new Translation(Constant.FRENCH, Constant.VIETNAMESE).equals(
+                this.genInputDto.translation
+            )
+        ) {
+            payload.dict = "F-V";
+        }
+
+        const params = Object.keys(payload)
+            .map((key) => {
+                return `${key}=${payload[key]}`;
+            })
+            .join("\r\n");
+
+        let html = await Common.fetchNeutral({
+            headers: {
+                "Content-Type": "text/plain;charset=UTF-8",
+            },
+            method: "POST",
+            payload: params,
+            respType: Common.RESP_TYPE_ENUM.TEXT,
+            url: Constant.LV_SEARCH_URL,
+        });
+        html = html.slice(1);
+        html = html.slice(0, -1);
+
+        let standardizedWords = [];
+        for (const li of $(html).find("li").prevObject) {
+            const liTxt = $(li).text();
+
+            if (
+                this.genInputDto.relatedWords
+                    ? liTxt.includes(word)
+                    : liTxt === word
+            ) {
+                standardizedWords.push({
+                    word: word,
+                    wordId: $(li)
+                        .attr("onclick")
+                        .replaceAll("\\'location.href=\"", "")
+                        .replaceAll("\"\\'", ""),
+                    wordOri: word,
+                });
+            }
+        }
+
+        return standardizedWords;
+    }
+
+    async #getDocument(cardInputDto) {
+        Common.logInfo(
+            "Getting LacViet document from URL = '{}'".format(
+                cardInputDto.standardizedWord.wordId
+            )
+        );
+
         let [
             standardizedWord,
         ] = this.genInputDto.standardizedWords.filter((w) =>
             Common.compareTwoJsonObjects(cardInputDto.standardizedWord, w)
         );
 
-        if (standardizedWord.lacVietDocument) {
-            return standardizedWord.lacVietDocument;
-        }
-
-        let payload =
-            "dict={}\r\nword={}\r\namount=12\r\ndong=Đóng\r\nshowinlang=1";
-        if (
-            cardInputDto.translation.equals(
-                new Translation(Constant.VIETNAMESE, Constant.ENGLISH)
-            )
-        ) {
-            payload = payload.format(
-                "V-A",
-                cardInputDto.standardizedWord.wordId
-            );
-        } else if (
-            cardInputDto.translation.equals(
-                new Translation(Constant.VIETNAMESE, Constant.FRENCH)
-            )
-        ) {
-            payload = payload.format(
-                "V-F",
-                cardInputDto.standardizedWord.wordId
-            );
-        } else if (
-            cardInputDto.translation.equals(
-                new Translation(Constant.VIETNAMESE, Constant.VIETNAMESE)
-            )
-        ) {
-            payload = payload.format(
-                "V-V",
-                cardInputDto.standardizedWord.wordId
-            );
-        } else if (
-            cardInputDto.translation.equals(
-                new Translation(Constant.ENGLISH, Constant.VIETNAMESE)
-            )
-        ) {
-            payload = payload.format(
-                "A-V",
-                cardInputDto.standardizedWord.wordId
-            );
-        } else if (
-            cardInputDto.translation.equals(
-                new Translation(Constant.FRENCH, Constant.VIETNAMESE)
-            )
-        ) {
-            payload = payload.format(
-                "F-V",
-                cardInputDto.standardizedWord.wordId
+        if (!standardizedWord.lacVietDocument) {
+            standardizedWord.lacVietDocument = await Common.getUrlContent(
+                `${Constant.LV_BASE_URL}${standardizedWord.wordId}`
             );
         }
-
-        standardizedWord.lacVietDocument = await Common.fetchNeutral({
-            method: "GET",
-            respType: Common.RESP_TYPE_ENUM.TEXT,
-            url: Constant.LV_SEARCH_URL,
-            headers: {
-                "Content-Type": "text/plain;charset=UTF-8",
-            },
-        });
 
         return standardizedWord.lacVietDocument;
-    }
-
-    async #getLacVietCss() {
-        if (this.genInputDto.lacVietCss) {
-            return this.genInputDto.lacVietCss;
-        }
-
-        let urlContent = await Common.getUrlContent("xxx");
-
-        this.genInputDto.lacVietCss = urlContent
-            .replaceAll("\n", " ")
-            .replaceAll("\r", " ")
-            .replaceAll("\t", " ");
-
-        return this.genInputDto.lacVietCss;
     }
 }
