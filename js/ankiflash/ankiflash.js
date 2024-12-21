@@ -2,16 +2,20 @@ import { Common } from "../base/common.js";
 import { Constant } from "../base/constant.js";
 import { Translation } from "./dto/translation.js";
 import { Generator } from "./generator.js";
+import { Flash } from "./helper/flash.js";
 
 $(document).ready(async () => {
     // Preconfig
     Common.presetOptions();
 
-    // Reder UI fields
-    await AnkiFlash.setupLayout();
-
     // Register handlers
     AnkiFlash.addHandlers();
+
+    // Handle downloaded file
+    Flash.renameDownloadedFiles();
+
+    // Reder UI fields
+    await AnkiFlash.setupLayout();
 
     // Ready logs
     Common.logWarn("==========>>>>>>>>>>>>>>>>>>>>>>>>>>>>>========");
@@ -23,53 +27,6 @@ $(document).ready(async () => {
 });
 
 export class AnkiFlash {
-    static async addHandlers() {
-        $("#btnGenerate").click(async () => {
-            const inputWords = (await Common.getTabStorage("inputTxt"))
-                .split("\n")
-                .filter(Boolean);
-
-            if (inputWords.length === 0) {
-                alert("No word found! Please check your input!");
-                return;
-            }
-
-            const genInputDto = {
-                words: inputWords,
-                translation: new Translation(
-                    await Common.getTabStorage("source"),
-                    await Common.getTabStorage("target")
-                ),
-                relatedWords: await Common.getTabStorage("relatedWords"),
-                isOnline: await Common.getTabStorage("isOnline"),
-                mainDict: await Common.getTabStorage("mainDict"),
-            };
-
-            const gen = new Generator(genInputDto);
-            Common.logWarn("gen", gen);
-
-            const cards = await gen.generateCards();
-            Common.logWarn("cards", cards);
-
-            if (
-                cards
-                    .map((c) => {
-                        return c.meaning;
-                    })
-                    .filter(Boolean).length > 0
-            ) {
-                await gen.generateCsv(cards);
-            }
-
-            Common.logWarn(Constant.FINISHED_MSG);
-        });
-
-        $("#btnCancel").click(async () => {
-            await Common.setTabStorage("isCanceled", true);
-            Common.logWarn(Constant.FINISHED_MSG);
-        });
-    }
-
     static async setupLayout() {
         const fieldConfigs = [
             {
@@ -140,6 +97,53 @@ export class AnkiFlash {
         $("#outputTxt").attr("rows", 11);
         $("#failureTxt").attr("rows", 10);
         $("#failureTxt").attr("style", "margin-top: -2px");
+    }
+
+    static async addHandlers() {
+        $("#btnGenerate").click(async () => {
+            const inputWords = (await Common.getTabStorage("inputTxt"))
+                .split("\n")
+                .filter(Boolean);
+
+            if (inputWords.length === 0) {
+                alert("No word found! Please check your input!");
+                return;
+            }
+
+            const genInputDto = {
+                words: inputWords,
+                translation: new Translation(
+                    await Common.getTabStorage("source"),
+                    await Common.getTabStorage("target")
+                ),
+                relatedWords: await Common.getTabStorage("relatedWords"),
+                isOnline: await Common.getTabStorage("isOnline"),
+                mainDict: await Common.getTabStorage("mainDict"),
+            };
+
+            const gen = new Generator(genInputDto);
+            Common.logWarn("gen", gen);
+
+            const cards = await gen.generateCards();
+            Common.logWarn("cards", cards);
+
+            if (
+                cards
+                    .map((c) => {
+                        return c.meaning;
+                    })
+                    .filter(Boolean).length > 0
+            ) {
+                await gen.generateCsv(cards);
+            }
+
+            Common.logWarn(Constant.FINISHED_MSG);
+        });
+
+        $("#btnCancel").click(async () => {
+            await Common.setTabStorage("isCanceled", true);
+            Common.logWarn(Constant.FINISHED_MSG);
+        });
     }
 
     static async #textboxChangedHandler(event) {

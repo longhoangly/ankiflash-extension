@@ -6,6 +6,7 @@ export class Common extends Base {
     static addHyperLink(params) {
         params.fieldId = params.fieldId || "";
         params.className = params.className || "";
+
         Common.requiredField(params.innerHTML, "params.innerHTML");
         Common.requiredField(params.hyperLink, "params.hyperLink");
 
@@ -29,24 +30,26 @@ export class Common extends Base {
 
     static addImage(params) {
         params.fieldId = params.fieldId || "";
-        params.className = params.className || "";
+        params.conClassName = params.conClassName || "";
+        params.capClassName = params.capClassName || "img-caption";
+        params.imgClassName = params.imgClassName || "img";
 
         Common.requiredField(params.caption, "params.caption");
         Common.requiredField(params.imgSrc, "params.imgSrc");
 
         let divCon = document.createElement("div");
-        divCon.className = params.className;
+        divCon.className = params.conClassName;
         divCon.style.display = "inline";
 
         let span = document.createElement("span");
         span.innerHTML = params.caption;
-        span.className = params.className;
+        span.className = params.capClassName;
         span.style.color = "DarkOrange";
         divCon.appendChild(span);
 
         let img = new Image();
         img.src = params.imgSrc;
-        img.className = params.className;
+        img.className = params.imgClassName;
         img.style.background = "white";
         img.style.marginBottom = "10px";
         divCon.appendChild(img);
@@ -375,7 +378,11 @@ export class Common extends Base {
                 $(`#${fieldId}`).val(value).trigger("change");
 
                 const fieldConfig = Common.UI_FIELDS[`${fieldId}Config`];
-                if (fieldType === "TEXTBOX" && !fieldConfig.datePicker) {
+                if (
+                    fieldConfig &&
+                    !fieldConfig.datePicker &&
+                    fieldType === "TEXTBOX"
+                ) {
                     await Common.#autoCompleteFieldHandler(value, fieldId);
                 }
                 break;

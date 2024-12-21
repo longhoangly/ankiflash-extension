@@ -157,4 +157,18 @@ export class Flash {
 
         return strList.join("");
     }
+
+    static async renameDownloadedFiles() {
+        chrome.downloads.onDeterminingFilename.addListener(
+            (downloadItem, suggest) => {
+                if (downloadItem.byExtensionId === chrome.runtime.id) {
+                    suggest({
+                        filename: `AnkiFlash/${downloadItem.filename}`,
+                        conflictAction: "overwrite",
+                    });
+                    Common.logWarn("downloaded", downloadItem);
+                }
+            }
+        );
+    }
 }

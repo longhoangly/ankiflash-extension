@@ -2,14 +2,11 @@ import { Translation } from "../ankiflash/dto/translation.js";
 import { Base } from "./base.js";
 
 export class Constant {
-    //=====FRAMEWORK=====
+    // FRAMEWORK
     static TODAY = Base.getJsonDate();
-    static AUTO_COMPLETE_FIELD_IDS = [];
     static FINISHED_MSG = "===>>>>>>> Finished Execution ===>>>>>>>";
 
-    //=====APP=====
-
-    // ANKI
+    // APP
     static ANKI_DECK = "anki_deck.csv";
     static MAPPING_CSV = "ankiflash_mapping.csv";
     static NO_EXAMPLE = "No example {{c1::...}}";
@@ -45,7 +42,7 @@ export class Constant {
     static JS_JP_EN_URL = `${Constant.JS_BASE_URL}/word/{}`;
     static JS_JP_EN_SEARCH_URL = `${Constant.JS_BASE_URL}/search/{}`;
 
-    // LANGUAGES (1)
+    // LANGUAGES
     static ENGLISH = "English";
     static FRENCH = "French";
     static VIETNAMESE = "Vietnamese";
@@ -54,7 +51,7 @@ export class Constant {
     static CHINESE_TD = "Chinese (Traditional)";
     static CHINESE_SP = "Chinese (Simplified)";
 
-    // DICTIONARIES (2)
+    // DICTIONARIES
     static LACVIET = "Lacviet";
     static WIKTIONARY = "Wiktionary";
     static OXFORD = "Oxford";
@@ -63,7 +60,7 @@ export class Constant {
     static KANTAN = "Kantan";
     static JISHO = "Jisho";
 
-    // TRANSLATIONS (3)
+    // TRANSLATIONS
     static SUPPORTED_TRANSLATIONS = [
         // ENGLISH ---> xxx
         {

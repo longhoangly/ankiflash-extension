@@ -1326,18 +1326,18 @@ export class Base {
         let downloadInfos = [];
 
         for (const url of urls) {
-            const partialFilePath =
+            const relativeFilePath =
                 filename || `${chrome.runtime.id}/${url.split("/").pop()}`;
 
             const downloadId = await chrome.downloads.download({
-                url: url,
-                filename: partialFilePath,
+                filename: relativeFilePath,
                 conflictAction: "overwrite",
+                url: url,
             });
 
             downloadInfos.push({
                 url: url,
-                filename: partialFilePath,
+                filename: relativeFilePath,
                 downloadId: downloadId,
             });
         }
