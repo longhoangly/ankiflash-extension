@@ -1,4 +1,5 @@
 import { Common } from "../../base/common.js";
+import { Constant } from "../../base/constant.js";
 
 export class Flash {
     static async convertGenToCardDto(genInputDto, word) {
@@ -161,7 +162,12 @@ export class Flash {
     static async renameDownloadedFiles() {
         chrome.downloads.onDeterminingFilename.addListener(
             (downloadItem, suggest) => {
-                if (downloadItem.byExtensionId === chrome.runtime.id) {
+                if (
+                    downloadItem.byExtensionId === chrome.runtime.id ||
+                    [Constant.ANKI_DECK, Constant.MAPPING_CSV].includes(
+                        downloadItem.filename
+                    )
+                ) {
                     suggest({
                         filename: `AnkiFlash/${downloadItem.filename}`,
                         conflictAction: "overwrite",

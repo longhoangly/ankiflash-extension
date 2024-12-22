@@ -20,7 +20,7 @@ $(document).ready(async () => {
     });
 
     $("#resetBtn").click(async () => {
-        await Common.presetOptions();
+        await Common.presetOptions("../data/default-options.json");
         await Options.loadConfigsFromStorage();
         await Common.pushAlert({
             message: "Reset configurations successfully!",

@@ -6,7 +6,7 @@ import { Flash } from "./helper/flash.js";
 
 $(document).ready(async () => {
     // Preconfig
-    Common.presetOptions();
+    Common.presetOptions("../data/default-options.json");
 
     // Register handlers
     AnkiFlash.addHandlers();

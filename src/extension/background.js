@@ -6,12 +6,12 @@ chrome.runtime.onInstalled.addListener(() => {
         title: "AnkiFlash Generator",
     });
 
-    Common.presetOptions();
+    Common.presetOptions("../static/data/default-options.json");
 });
 
 chrome.action.onClicked.addListener((tab) => {
     chrome.tabs.create({
-        url: chrome.runtime.getURL("html/ankiflash.html"),
+        url: chrome.runtime.getURL("static/html/ankiflash.html"),
         active: true,
         index: 0,
     });
@@ -20,7 +20,7 @@ chrome.action.onClicked.addListener((tab) => {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId === "ankiFlash") {
         chrome.tabs.create({
-            url: chrome.runtime.getURL("html/ankiflash.html"),
+            url: chrome.runtime.getURL("static/html/ankiflash.html"),
             active: true,
             index: 0,
         });

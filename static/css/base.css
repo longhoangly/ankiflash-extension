@@ -137,15 +137,3 @@ input.upload {
 li[aria-selected="true"] {
     background-color: #3479bb !important;
 }
-
-#payloadModalBg {
-    background: #343a40 !important;
-}
-
-#jsonTestCase {
-    border-radius: 5px;
-}
-
-#numOfParcelsGroup {
-    max-width: 29%;
-}

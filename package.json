@@ -1,0 +1,22 @@
+{
+    "name": "ankiflash-extension",
+    "version": "1.1.0",
+    "description": "A tool generates flash-cards for importing into Anki memorizing app (https://apps.ankiweb.net)",
+    "author": "hoanglongtc7@gmail.com",
+    "license": "Apache License",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/longhoangly/ankiflash-extensionn"
+    },
+    "scripts": {
+        "build": "webpack --config webpack.prod.js",
+        "start": "webpack --watch --config webpack.dev.js"
+    },
+    "devDependencies": {
+        "clean-webpack-plugin": "^4.0.0",
+        "copy-webpack-plugin": "^12.0.2",
+        "webpack": "^5.97.1",
+        "webpack-cli": "^5.1.4",
+        "webpack-merge": "^6.0.1"
+    }
+}

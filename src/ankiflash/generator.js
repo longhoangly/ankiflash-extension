@@ -99,69 +99,31 @@ export class Generator {
 
         for (const card of cards.filter((c) => c.status === "SUCCESS")) {
             cardLines.push([
-                "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
-                    card.cardInputDto.standardizedWord.word,
-                    "\t",
-                    card.wordTypes,
-                    "\t",
-                    card.phonetics,
-                    "\t",
-                    card.examples,
-                    "\t",
-                    card.sounds,
-                    "\t",
-                    card.images,
-                    "\t",
-                    card.meaning,
-                    "\t",
-                    card.copyright,
-                    "\t",
-                    card.tag + "\n"
-                ),
+                card.cardInputDto.standardizedWord.word,
+                card.wordTypes,
+                card.phonetics,
+                card.examples,
+                card.sounds,
+                card.images,
+                card.meaning,
+                card.copyright,
+                card.tag,
             ]);
 
             mappingLines.push([
-                "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
-                    card.cardInputDto.standardizedWord.wordOri,
-                    "\t",
-                    card.wordTypes,
-                    "\t",
-                    card.phonetics,
-                    "\t",
-                    card.examples,
-                    "\t",
-                    card.sounds,
-                    "\t",
-                    card.images,
-                    "\t",
-                    card.meaning,
-                    "\t",
-                    card.copyright + "\n"
-                ),
+                card.cardInputDto.standardizedWord.wordOri,
+                card.wordTypes,
+                card.phonetics,
+                card.examples,
+                card.sounds,
+                card.images,
+                card.meaning,
+                card.copyright,
             ]);
         }
 
-        const deckUrl = URL.createObjectURL(
-            new Blob(cardLines, {
-                type: "text/csv",
-            })
-        );
-        await Common.chromeDownloadFiles(
-            [deckUrl],
-            Constant.ANKI_DECK
-            // `${chrome.runtime.id}/${Constant.ANKI_DECK}`
-        );
-
-        const mappingUrl = URL.createObjectURL(
-            new Blob(mappingLines, {
-                type: "text/csv",
-            })
-        );
-        await Common.chromeDownloadFiles(
-            [mappingUrl],
-            Constant.MAPPING_CSV
-            // `${chrome.runtime.id}/${Constant.MAPPING_CSV}`
-        );
+        Common.downloadCsvFile(Constant.ANKI_DECK, cardLines, "\t");
+        Common.downloadCsvFile(Constant.MAPPING_CSV, mappingLines, "\t");
     }
 
     static #getDictInstance(genInputDto) {

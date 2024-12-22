@@ -245,12 +245,16 @@ export class Oxford extends Dictionary {
         oxfordCss = oxfordCss.replaceAll(/333333/gi, "1da8af");
         oxfordCss = oxfordCss.replaceAll(/0069b4/gi, "1da8af");
         oxfordCss = oxfordCss.replaceAll(/faded7/gi, "36454f");
-
         oxfordCss = oxfordCss.replaceAll(/#fdf3f0/gi, "inherit");
         oxfordCss = oxfordCss.replaceAll(
             "../images",
             "https://www.oxfordlearnersdictionaries.com/external/images"
         );
+
+        oxfordCss = oxfordCss
+            .replaceAll("\n", " ")
+            .replaceAll("\r", " ")
+            .replaceAll("\t", " ");
 
         this.genInputDto.oxfordCss = oxfordCss.replaceAll(
             "div.collapse .body .unbox:first-of-type",

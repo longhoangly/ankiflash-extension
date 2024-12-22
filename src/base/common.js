@@ -480,7 +480,7 @@ export class Common extends Base {
     }
 
     static async presetOptions(
-        jsonPath = "../../data/default-options.json",
+        jsonPath,
         storageConfigName = `${chrome.runtime.id}Options`
     ) {
         Common.logInfo(
@@ -537,52 +537,6 @@ export class Common extends Base {
 
         await chrome.declarativeNetRequest.updateDynamicRules({
             removeRuleIds: currentRules.map((rule) => rule.id),
-        });
-    }
-
-    static async setCookie(
-        cookieStorageKey,
-        baseUrl,
-        ruleId = Common.randomInt(1000, 99999999)
-    ) {
-        let cookieString = await Common.getTabStorage(cookieStorageKey);
-
-        Common.logInfo("Setting cookie", {
-            cookieStorageKey: cookieStorageKey,
-            baseUrl: baseUrl,
-            cookieString: cookieString,
-        });
-
-        let addRules = [];
-        if (cookieString) {
-            let addRule = {
-                id: ruleId,
-                priority: 1,
-                action: {
-                    type: "modifyHeaders",
-                    requestHeaders: [
-                        {
-                            header: "cookie",
-                            operation: "set",
-                            value: cookieString,
-                        },
-                    ],
-                },
-                condition: {
-                    urlFilter: `${baseUrl}/*`,
-                },
-            };
-
-            if (baseUrl.includes("xxx")) {
-                addRule.condition.domainType = "thirdParty";
-            }
-
-            addRules.push(addRule);
-        }
-
-        chrome.declarativeNetRequest.updateDynamicRules({
-            removeRuleIds: [ruleId],
-            addRules: addRules,
         });
     }
 }

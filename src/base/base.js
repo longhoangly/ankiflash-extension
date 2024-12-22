@@ -561,30 +561,13 @@ export class Base {
         return data[key];
     }
 
-    static async setStorage(key, value) {
-        let json = {};
-        json[key] = value;
-        Base.logDebug("Saving storage...", key, value);
-
-        const promise = await new Promise((resolve, reject) => {
-            chrome.storage.local.set(json, () => {
-                if (chrome.runtime.lastError) {
-                    return reject(chrome.runtime.lastError);
-                }
-                resolve(true);
-            });
-        });
-
-        return promise;
-    }
-
     static async getTabStorage(key) {
         const currentTab = await Base.getCurrentTab();
         const tabId = currentTab?.id || chrome.runtime.id;
 
         const tabStorageValue = await Base.getStorage(`${tabId}_${key}`);
         Base.logDebug(
-            "TabId",
+            "tabId",
             tabId,
             "key",
             key,
@@ -592,6 +575,21 @@ export class Base {
             tabStorageValue
         );
         return tabStorageValue;
+    }
+
+    static async getSubStorage(subKeys, key) {
+        const subStorageValue = await Base.getStorage(
+            `${subKeys.join("_")}_${key}`
+        );
+        Base.logDebug(
+            "subKeys",
+            subKeys,
+            "key",
+            key,
+            "[getTabStorage]",
+            subStorageValue
+        );
+        return subStorageValue;
     }
 
     static async getJsonStorage(storageKey, jsonKeys = []) {
@@ -620,6 +618,36 @@ export class Base {
         }
     }
 
+    static async setStorage(key, value) {
+        let json = {};
+        json[key] = value;
+        Base.logDebug("Saving storage...", key, value);
+
+        const promise = await new Promise((resolve, reject) => {
+            chrome.storage.local.set(json, () => {
+                if (chrome.runtime.lastError) {
+                    return reject(chrome.runtime.lastError);
+                }
+                resolve(true);
+            });
+        });
+
+        return promise;
+    }
+
+    static async setTabStorage(key, value) {
+        const currentTab = await Base.getCurrentTab();
+        const tabId = currentTab?.id || chrome.runtime.id;
+
+        Base.logDebug("tabId", tabId, "key", key, "[setTabStorage]", value);
+        return await Base.setStorage(`${tabId}_${key}`, value);
+    }
+
+    static async setSubStorage(subKeys, key, value) {
+        Base.logDebug("subKeys", subKeys, "key", key, "[setSubStorage]", value);
+        return await Base.setStorage(`${subKeys.join("_")}_${key}`, value);
+    }
+
     static async setJsonStorage(storageKey, jsonKeys, value) {
         if (jsonKeys.length === 0) {
             throw new Error("Please use setStorage method instead.");
@@ -632,14 +660,6 @@ export class Base {
 
         Base.logDebug("Saving storage JSON value...", storedJson);
         return storedJson;
-    }
-
-    static async setTabStorage(key, value) {
-        const currentTab = await Base.getCurrentTab();
-        const tabId = currentTab?.id || chrome.runtime.id;
-
-        Base.logDebug("TabId", tabId, "key", key, "[setTabStorage]", value);
-        return await Base.setStorage(`${tabId}_${key}`, value);
     }
 
     static setJsonFieldValue(keys, value, json) {
@@ -1280,40 +1300,45 @@ export class Base {
         return hashHex;
     }
 
-    static downloadJsonFile(fileName, json) {
-        const textContent = URL.createObjectURL(
+    static downloadJsonFile(name, json) {
+        const jsonContent = URL.createObjectURL(
             new Blob([Base.jsonToString(json, true)], {
                 type: "application/json",
             })
         );
 
-        Base.#downloadFileContent(fileName, textContent);
+        Base.#downloadFile(name, jsonContent);
     }
 
-    static downloadTextFile(fileName, text) {
-        const textContent = "data:text/plain;charset=utf-8," + text;
-        Base.#downloadFileContent(fileName, textContent);
+    static downloadTextFile(name, text) {
+        const textContent = URL.createObjectURL(
+            new Blob([text], {
+                type: "text/plain",
+            })
+        );
+
+        Base.#downloadFile(name, textContent);
     }
 
-    static downloadCsvFile(fileName, rows) {
-        // each row in CSV file is an array of cells
-        Base.logInfo("Downloading csv file rows", rows);
+    static downloadCsvFile(name, rows, cellSeparator = ",") {
+        // each row is an array of cells
+        const csvContent = URL.createObjectURL(
+            new Blob([rows.map((e) => e.join(cellSeparator)).join("\n")], {
+                type: "application/csv",
+            })
+        );
 
-        const csvContent =
-            "data:application/csv;charset=utf-8," +
-            rows.map((e) => e.join(",")).join("\n");
-
-        Base.#downloadFileContent(fileName, csvContent);
+        Base.#downloadFile(name, csvContent);
     }
 
-    static #downloadFileContent(fileName, fileContent) {
-        const encodedUri = encodeURI(fileContent);
+    static #downloadFile(name, content) {
+        const encodedUri = encodeURI(content);
 
         let link = document.createElement("a");
         link.style.display = "none";
 
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", fileName);
+        link.setAttribute("download", name);
 
         // Required for FF
         document.body.appendChild(link);
