@@ -1,20 +1,22 @@
+/** @format */
+
 export class Card {
-    wordTypes;
-    phonetics;
-    examples;
+	wordTypes;
+	phonetics;
+	examples;
 
-    images;
-    sounds;
-    status;
+	images;
+	sounds;
+	status;
 
-    meaning;
-    copyright;
-    tag;
+	meaning;
+	copyright;
+	tag;
 
-    cardInputDto;
-    errorMessage;
+	cardInputDto;
+	errorMessage;
 
-    constructor(cardInputDto) {
-        this.cardInputDto = cardInputDto;
-    }
+	constructor(cardInputDto) {
+		this.cardInputDto = cardInputDto;
+	}
 }

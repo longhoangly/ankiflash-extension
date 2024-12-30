@@ -1,10 +1,12 @@
-export class Meaning {
-    wordType;
-    meaning;
-    subMeaning;
-    examples;
+/** @format */
 
-    constructor(meaning, examples = []) {
-        (this.meaning = meaning), (this.examples = examples);
-    }
+export class Meaning {
+	wordType;
+	meaning;
+	subMeaning;
+	examples;
+
+	constructor(meaning, examples = []) {
+		(this.meaning = meaning), (this.examples = examples);
+	}
 }

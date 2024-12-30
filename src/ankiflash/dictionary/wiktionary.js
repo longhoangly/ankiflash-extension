@@ -1,82 +1,83 @@
+/** @format */
+
 import { Common } from "../../base/common.js";
 import { Constant } from "../../base/constant.js";
 import { Dictionary } from "../dictionary.js";
 
 export class Wiktionary extends Dictionary {
-    constructor(genInputDto) {
-        super(genInputDto);
-    }
+	constructor(genInputDto) {
+		super(genInputDto);
+	}
 
-    async standardizedWords() {
-        Common.logWarn(`[standardizedWords] ${Wiktionary.name}`);
+	async standardizedWords() {
+		Common.logWarn(`[standardizedWords] ${Wiktionary.name}`);
 
-        let standardizedWords = [];
-        for (const word of this.genInputDto.words) {
-            standardizedWords.push({
-                word: word,
-                wordId: word,
-                wordOri: word,
-            });
-        }
-        return standardizedWords;
-    }
+		let standardizedWords = [];
+		for (const word of this.genInputDto.words) {
+			standardizedWords.push({
+				word: word,
+				wordId: word,
+				wordOri: word,
+			});
+		}
+		return standardizedWords;
+	}
 
-    async getWordTypes(cardInputDto) {
-        Common.logWarn(`[getWordTypes] ${Wiktionary.name}`, cardInputDto);
-    }
+	async getWordTypes(cardInputDto) {
+		Common.logWarn(`[getWordTypes] ${Wiktionary.name}`, cardInputDto);
+	}
 
-    async getPhonetics(cardInputDto) {
-        Common.logWarn(`[getPhonetics] ${Wiktionary.name}`, cardInputDto);
-    }
+	async getPhonetics(cardInputDto) {
+		Common.logWarn(`[getPhonetics] ${Wiktionary.name}`, cardInputDto);
+	}
 
-    async getExamples(cardInputDto, count = 5) {
-        Common.logWarn(`[getExamples] ${Wiktionary.name}`, cardInputDto);
-    }
+	async getExamples(cardInputDto, count = 5) {
+		Common.logWarn(`[getExamples] ${Wiktionary.name}`, cardInputDto);
+	}
 
-    async getSounds(cardInputDto) {
-        Common.logWarn(`[getSounds] ${Wiktionary.name}`, cardInputDto);
-    }
+	async getSounds(cardInputDto) {
+		Common.logWarn(`[getSounds] ${Wiktionary.name}`, cardInputDto);
+	}
 
-    async getImages(cardInputDto) {
-        Common.logWarn(`[getImages] ${Wiktionary.name}`, cardInputDto);
-    }
+	async getImages(cardInputDto) {
+		Common.logWarn(`[getImages] ${Wiktionary.name}`, cardInputDto);
+	}
 
-    async getMeaning(cardInputDto) {
-        Common.logWarn(`[getMeaning] ${Wiktionary.name}`, cardInputDto);
-    }
+	async getMeaning(cardInputDto) {
+		Common.logWarn(`[getMeaning] ${Wiktionary.name}`, cardInputDto);
+	}
 
-    async #getDocument(cardInputDto) {
-        let [
-            standardizedWord,
-        ] = this.genInputDto.standardizedWords.filter((w) =>
-            Common.compareTwoJsonObjects(cardInputDto.standardizedWord, w)
-        );
+	async #getDocument(cardInputDto) {
+		let [standardizedWord] = this.genInputDto.standardizedWords.filter(
+			(w) =>
+				Common.compareTwoJsonObjects(cardInputDto.standardizedWord, w)
+		);
 
-        if (standardizedWord.wiktionaryDocument) {
-            return standardizedWord.wiktionaryDocument;
-        }
+		if (standardizedWord.wiktionaryDocument) {
+			return standardizedWord.wiktionaryDocument;
+		}
 
-        standardizedWord.wiktionaryDocument = await Common.fetchNeutral({
-            method: "GET",
-            respType: Common.RESP_TYPE_ENUM.TEXT,
-            url: "xxx".format(standardizedWord.wordId),
-        });
+		standardizedWord.wiktionaryDocument = await Common.fetchNeutral({
+			method: "GET",
+			respType: Common.RESP_TYPE_ENUM.TEXT,
+			url: "xxx".format(standardizedWord.wordId),
+		});
 
-        return standardizedWord.kantanDocument;
-    }
+		return standardizedWord.kantanDocument;
+	}
 
-    async #getCss() {
-        if (this.genInputDto.wiktionaryCss) {
-            return this.genInputDto.wiktionaryCss;
-        }
+	async #getCss() {
+		if (this.genInputDto.wiktionaryCss) {
+			return this.genInputDto.wiktionaryCss;
+		}
 
-        const urlContent = await Common.getUrlContent("xxx");
+		const urlContent = await Common.getUrlContent("xxx");
 
-        this.genInputDto.wiktionaryCss = urlContent
-            .replaceAll("\n", " ")
-            .replaceAll("\r", " ")
-            .replaceAll("\t", " ");
+		this.genInputDto.wiktionaryCss = urlContent
+			.replaceAll("\n", " ")
+			.replaceAll("\r", " ")
+			.replaceAll("\t", " ");
 
-        return this.genInputDto.wiktionaryCss;
-    }
+		return this.genInputDto.wiktionaryCss;
+	}
 }
