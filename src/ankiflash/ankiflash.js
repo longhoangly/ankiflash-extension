@@ -99,10 +99,6 @@ export class AnkiFlash {
 		$("#outputTxt").attr("rows", 11);
 		$("#failureTxt").attr("rows", 10);
 		$("#failureTxt").attr("style", "margin-top: -2px");
-
-		Common.toast("success", "success Bitte Zeitspanne auswählen");
-		Common.toast("danger", "danger Bitte Zeitspanne auswählen1");
-		Common.toast("warning", "warning Bitte Zeitspanne auswählen2");
 	}
 
 	static async addHandlers() {

@@ -1374,6 +1374,17 @@ export class Base {
 	}
 
 	static toast(type, content) {
+		if (
+			type !== "success" &&
+			type !== "danger" &&
+			type !== "warning" &&
+			type !== "info"
+		) {
+			throw new Error(
+				"Toast type is invalid. Please use 'success', 'danger', 'warning', or 'info'"
+			);
+		}
+
 		let toastContainer = $(".toast-container");
 		if (toastContainer.length === 0) {
 			const container = document.createElement("div");
@@ -1387,7 +1398,7 @@ export class Base {
 			includedChars: true,
 		})}`;
 		toastContainer.append(`
-            <div id='${toastId}' class="toast bg-secondary text-white" role="alert" aria-live="assertive" aria-atomic="true">
+            <div id='${toastId}' class="toast bg-${type} text-white" role="alert" aria-live="assertive" aria-atomic="true">
                 <div class="toast-header">
                     <img src="../img/favicon16.png" style="width: 8%" class="rounded me-2" alt="...">
                     <strong class="me-auto">AnkiFlash</strong>
@@ -1399,7 +1410,7 @@ export class Base {
                 </div>
             </div>`);
 
-		let showingTime = type === "danger" || type === "warning" ? 20 : 3;
+		let showingTime = type === "danger" || type === "warning" ? 20 : 5;
 		let toast = $(`#${toastId}`);
 		toast.toast({ delay: showingTime * 1000 });
 		toast.on("shown.bs.toast", async () => {

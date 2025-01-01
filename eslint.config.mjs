@@ -10,11 +10,14 @@ export default [
 	{
 		languageOptions: {
 			globals: {
-				...globals.browser,
 				...globals.devtools,
 				...globals.jquery,
+				...globals.browser,
 				...globals.node,
-				...globals.es5,
+				...globals.commonjs,
+			},
+			rules: {
+				"@typescript-eslint/no-var-requires": "off",
 			},
 		},
 	},
