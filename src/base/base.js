@@ -1,12 +1,9 @@
 /** @format */
 
-// "string1 {} string2".format("and")
-String.prototype.format = function () {
-	let i = 0,
-		args = arguments;
-	return this.replace(/{}/g, () => {
-		return args[i] ? args[i++] : "";
-	});
+// "string1 {} string2 {}".format("and", "end")
+String.prototype.format = function (...args) {
+	let i = 0;
+	return this.replace(/{}/g, () => (args[i] ? args[i++] : ""));
 };
 
 export class Base {
@@ -24,16 +21,11 @@ export class Base {
 
 	static uuid() {
 		let dt = Date.now();
-		const uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-			/[xy]/g,
-			(c) => {
-				const r = (dt + Math.random() * 16) % 16 | 0;
-				dt = Math.floor(dt / 16);
-				return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-			}
-		);
-
-		return uuid;
+		return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+			const r = (dt + Math.random() * 16) % 16 | 0;
+			dt = Math.floor(dt / 16);
+			return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+		});
 	}
 
 	static isDefined(value) {
@@ -204,40 +196,50 @@ export class Base {
 	}
 
 	static logSuccess(...args) {
-		console.log(Base.#decorLogMsg(args), "color: LightGreen", ...args);
-
-		if (Base.LOG_CONFIG.TRACE) {
-			console.trace();
-		}
+		Base.#log("success", ...args);
 	}
 
 	static logWarn(...args) {
-		console.log(Base.#decorLogMsg(args), "color: DarkOrange", ...args);
-
-		if (Base.LOG_CONFIG.TRACE) {
-			console.trace();
-		}
+		Base.#log("warn", ...args);
 	}
 
 	static logInfo(...args) {
-		console.log(Base.#decorLogMsg(args), "color: DarkGray", ...args);
-
-		if (Base.LOG_CONFIG.TRACE) {
-			console.trace();
-		}
+		Base.#log("info", ...args);
 	}
 
 	static logError(...args) {
-		console.log(Base.#decorLogMsg(args), "color: Red", ...args);
-
-		if (Base.LOG_CONFIG.TRACE) {
-			console.trace();
-		}
+		Base.#log("error", ...args);
 	}
 
 	static logDebug(...args) {
-		if (Base.LOG_CONFIG.DEBUG) {
-			console.log(Base.#decorLogMsg(args), "color: Red", ...args);
+		Base.#log("debug", ...args);
+	}
+
+	static #log(type, ...args) {
+		let color;
+		switch (type) {
+			case "success":
+				color = "LightGreen";
+				break;
+			case "warn":
+				color = "DarkOrange";
+				break;
+			case "info":
+				color = "DarkGray";
+				break;
+			case "error":
+				color = "Red";
+				break;
+			case "debug":
+				color = "Red";
+				break;
+			default:
+				throw new Error("Type not found");
+		}
+		color = `color: ${color}`;
+
+		if (type !== "debug" || Base.LOG_CONFIG.DEBUG) {
+			console.log(Base.#decorLogMsg(args), color, ...args);
 		}
 
 		if (Base.LOG_CONFIG.TRACE) {
@@ -714,7 +716,7 @@ export class Base {
 			}
 
 			if (request.payload instanceof FormData) {
-				let formData = {};
+				const formData = {};
 				for (const pair of request.payload.entries()) {
 					formData[pair[0]] = pair[1];
 				}
@@ -821,7 +823,7 @@ export class Base {
 			requestCount++;
 			if (
 				json === null ||
-				json.error === undefined ||
+				json?.error === undefined ||
 				requestCount === retryTimes
 			) {
 				break;
@@ -1373,7 +1375,23 @@ export class Base {
 		return downloadInfos;
 	}
 
-	static toast(type, content) {
+	static toastSuccess(content) {
+		Base.#toast("success", content);
+	}
+
+	static toastDanger(content) {
+		Base.#toast("danger", content);
+	}
+
+	static toastWarn(content) {
+		Base.#toast("warning", content);
+	}
+
+	static toastInfo(content) {
+		Base.#toast("info", content);
+	}
+
+	static #toast(type, content) {
 		if (
 			type !== "success" &&
 			type !== "danger" &&
@@ -1422,6 +1440,7 @@ export class Base {
 				await Base.delayTime(1000);
 				if (showingTime === 0) {
 					toast.toast("hide");
+					break;
 				}
 			}
 		});
