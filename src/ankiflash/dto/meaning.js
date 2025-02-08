@@ -6,7 +6,10 @@ export class Meaning {
 	subMeaning;
 	examples;
 
-	constructor(meaning, examples = []) {
-		(this.meaning = meaning), (this.examples = examples);
+	constructor() {
+		this.wordType = "";
+		this.meaning = "";
+		this.subMeaning = "";
+		this.examples = [];
 	}
 }

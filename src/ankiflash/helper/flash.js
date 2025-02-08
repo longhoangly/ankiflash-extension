@@ -5,7 +5,7 @@ import { Constant } from "../../base/constant.js";
 
 export class Flash {
 	static async convertGenToCardDto(genInputDto, word) {
-		let cardInputDto = structuredClone(genInputDto);
+		const cardInputDto = structuredClone(genInputDto);
 
 		delete cardInputDto.words;
 		delete cardInputDto.standardizedWords;
@@ -20,7 +20,7 @@ export class Flash {
 	}
 
 	static async buildExamples(exampleStrs, isJapanese = false) {
-		let examples = [];
+		const examples = [];
 
 		if (isJapanese) {
 			examples.push('<div class="content-container japan-font">');
@@ -69,7 +69,8 @@ export class Flash {
 		meanings,
 		isJapanese = false
 	) {
-		let strList = [];
+		Common.logWarn("meanings", meanings);
+		const strList = [];
 
 		if (isJapanese) {
 			strList.push('<div class="content-container japan-font">');
@@ -96,7 +97,7 @@ export class Flash {
 		for (const mean of meanings) {
 			if (mean.wordType) {
 				strList.push(
-					'<h4 class="content-meaning-type"\'>{}</h4>'.format(
+					'<h4 class="content-meaning-type">{}</h4>'.format(
 						mean.wordType.trim()
 					)
 				);
@@ -124,9 +125,9 @@ export class Flash {
 				strList.push('<ul class="content-circle">');
 
 				if (isJapanese) {
-					index = 0;
-					for (example in mean.examples) {
-						if (index % 2 == 0) {
+					let index = 0;
+					for (const example in mean.examples) {
+						if (index % 2 === 0) {
 							strList.push(
 								'<li class="content-example">{}</li>'.format(
 									example.trim()

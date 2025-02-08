@@ -13,21 +13,18 @@ export class Oxford extends Dictionary {
 	async standardizedWords() {
 		Common.logWarn(`[standardizedWords] ${Oxford.name}`);
 
-		let standardizedWords = [];
+		let stdWords = [];
 		for (const word of this.genInputDto.words) {
-			standardizedWords = standardizedWords.concat(
-				await this.#getStandardizedWords(word)
-			);
+			stdWords = stdWords.concat(await this.#getStandardizedWords(word));
 		}
-		return standardizedWords;
+		return stdWords;
 	}
 
 	async getWordTypes(cardInputDto) {
 		Common.logWarn(`[getWordTypes] ${Oxford.name}`, cardInputDto);
+		const oxDocument = await this.#getDocument(cardInputDto);
 
-		let wordTypes = $(await this.#getDocument(cardInputDto)).find(
-			"span.pos"
-		);
+		let wordTypes = $(oxDocument).find("span.pos");
 		wordTypes = `(${$(wordTypes[0]).text()})`;
 
 		Common.logWarn("wordTypes", wordTypes);
@@ -36,10 +33,9 @@ export class Oxford extends Dictionary {
 
 	async getPhonetics(cardInputDto) {
 		Common.logWarn(`[getPhonetics] ${Oxford.name}`, cardInputDto);
+		const oxDocument = await this.#getDocument(cardInputDto);
 
-		let phonetics = $(await this.#getDocument(cardInputDto)).find(
-			"span.phon"
-		);
+		let phonetics = $(oxDocument).find("span.phon");
 		phonetics = `${$(phonetics[0]).text()} ${$(phonetics[1]).text()}`;
 
 		Common.logWarn("phonetics", phonetics);
@@ -48,13 +44,12 @@ export class Oxford extends Dictionary {
 
 	async getExamples(cardInputDto, count = 5) {
 		Common.logWarn(`[getExamples] ${Oxford.name}`, cardInputDto);
+		const oxDocument = await this.#getDocument(cardInputDto);
 
-		let exampleTags = $(await this.#getDocument(cardInputDto)).find(
-			"span.x"
-		);
+		let exampleTags = $(oxDocument).find("span.x");
 		exampleTags = exampleTags.slice(0, count);
 
-		let examples = [];
+		const examples = [];
 		for (const exampleTag of exampleTags) {
 			examples.push($(exampleTag).text());
 		}
@@ -72,17 +67,16 @@ export class Oxford extends Dictionary {
 			}
 		}
 
-		return await Flash.buildExamples(examples);
+		return Flash.buildExamples(examples);
 	}
 
 	async getSounds(cardInputDto) {
 		Common.logWarn(`[getSounds] ${Oxford.name}`, cardInputDto);
+		const oxDocument = await this.#getDocument(cardInputDto);
 
-		let soundLinks = [];
+		const soundLinks = [];
 		for (const selector of ["div.pron-uk", "div.pron-us"]) {
-			const [soundTag] = $(await this.#getDocument(cardInputDto)).find(
-				selector
-			);
+			const [soundTag] = $(oxDocument).find(selector);
 			soundLinks.push($(soundTag).attr("data-src-mp3"));
 		}
 
@@ -91,8 +85,9 @@ export class Oxford extends Dictionary {
 			await Common.chromeDownloadFiles(soundLinks);
 		}
 
-		let sounds = [];
-		for (let sound of soundLinks) {
+		const sounds = [];
+		for (const soundLink of soundLinks) {
+			let sound = soundLink;
 			if (!cardInputDto.isOnline) {
 				sound = sound.split("/").pop();
 			}
@@ -110,10 +105,9 @@ export class Oxford extends Dictionary {
 
 	async getImages(cardInputDto) {
 		Common.logWarn(`[getImages] ${Oxford.name}`, cardInputDto);
+		const oxDocument = await this.#getDocument(cardInputDto);
 
-		const [imageTag] = $(await this.#getDocument(cardInputDto)).find(
-			"a.topic"
-		);
+		const [imageTag] = $(oxDocument).find("a.topic");
 		if (imageTag) {
 			const imageLink = $(imageTag).attr("href");
 			Common.logWarn("imageLink", imageLink);
@@ -124,7 +118,7 @@ export class Oxford extends Dictionary {
 				image = imageLink.split("/").pop();
 			}
 
-			image = '<img src="' + image + '"/>';
+			image = `<img src="${image}"/>`;
 			return image;
 		} else {
 			return '<a href="https://www.google.com/search?biw=1280&bih=661&tbm=isch&sa=1&q={}" style="font-size: 15px; color: blue">Search Images</a>'.format(
@@ -135,11 +129,9 @@ export class Oxford extends Dictionary {
 
 	async getMeaning(cardInputDto) {
 		Common.logWarn(`[getMeaning] ${Oxford.name}`, cardInputDto);
+		const oxDocument = await this.#getDocument(cardInputDto);
 
-		const [sense] = $(await this.#getDocument(cardInputDto)).find(
-			'ol[class*="sense"]'
-		);
-
+		const [sense] = $(oxDocument).find('ol[class*="sense"]');
 		let meaning = sense.outerHTML
 			.replaceAll("\n", " ")
 			.replaceAll("\r", " ")
@@ -157,7 +149,7 @@ export class Oxford extends Dictionary {
 		const url = Constant.OX_EN_EN_SEARCH_URL.format(word);
 		const html = await Common.getUrlContent(url);
 
-		let standardizedWords = [];
+		const stdWords = [];
 		if (html) {
 			const links = $(html).find("link[rel='canonical']").prevObject;
 			for (const link of links) {
@@ -167,7 +159,7 @@ export class Oxford extends Dictionary {
 					const matchedWord = $(matched).text();
 
 					if (matchedWord) {
-						standardizedWords.push({
+						stdWords.push({
 							word: matchedWord,
 							wordId: href.split("/").pop(),
 							wordOri: word,
@@ -193,9 +185,9 @@ export class Oxford extends Dictionary {
 								const href = $(link).attr("href");
 
 								const wordId = href.split("/").pop();
-								standardizedWords.push({
+								stdWords.push({
+									wordId,
 									word: spanTxt,
-									wordId: wordId,
 									wordOri: word,
 								});
 							}
@@ -207,24 +199,23 @@ export class Oxford extends Dictionary {
 			Common.logInfo("Words not found", word);
 		}
 
-		return standardizedWords;
+		return stdWords;
 	}
 
 	async #getDocument(cardInputDto) {
-		let [standardizedWord] = this.genInputDto.standardizedWords.filter(
-			(w) =>
-				Common.compareTwoJsonObjects(cardInputDto.standardizedWord, w)
+		const [stdWord] = this.genInputDto.standardizedWords.filter(w =>
+			Common.compareTwoJsonObjects(cardInputDto.standardizedWord, w)
 		);
 
-		if (!standardizedWord.oxfordDocument) {
-			standardizedWord.oxfordDocument = await Common.fetchNeutral({
+		if (!stdWord.oxfordDocument) {
+			stdWord.oxfordDocument = await Common.fetchNeutral({
 				method: "GET",
 				respType: Common.RESP_TYPE_ENUM.TEXT,
-				url: Constant.OX_DETAIL_URL.format(standardizedWord.wordId),
+				url: Constant.OX_DETAIL_URL.format(stdWord.wordId),
 			});
 		}
 
-		return standardizedWord.oxfordDocument;
+		return stdWord.oxfordDocument;
 	}
 
 	async #getCss() {

@@ -29,7 +29,7 @@ export class Generator {
 			await dictionary.standardizedWords();
 		Common.logInfo("standardizedWords", this.genInputDto.standardizedWords);
 
-		let outputCards = [];
+		const outputCards = [];
 		for (const stdWord of this.genInputDto.standardizedWords) {
 			const cardInputDto = await Flash.convertGenToCardDto(
 				this.genInputDto,
@@ -39,7 +39,13 @@ export class Generator {
 			outputCards.push(
 				await this.#generateCard(dictionary, cardInputDto)
 			);
-			await this.#calculateProgress(outputCards);
+			const percentage = parseInt(
+				(outputCards.length /
+					this.genInputDto.standardizedWords.length) *
+					100,
+				10
+			);
+			await this.calculateProgress(percentage);
 
 			if (await Common.getTabStorage("isCanceled")) {
 				await Common.setTabStorage("isCanceled", false);
@@ -51,7 +57,7 @@ export class Generator {
 	}
 
 	async #generateCard(dictionary, cardInputDto) {
-		let card = new Card(cardInputDto);
+		const card = new Card(cardInputDto);
 
 		try {
 			card.wordTypes = await dictionary.getWordTypes(cardInputDto);
@@ -68,7 +74,7 @@ export class Generator {
 				(await Common.getTabStorage("outputTxt")) || "";
 			await Common.setFieldValue(
 				"outputTxt",
-				card.meaning + "\n" + currentOutput
+				`${card.meaning}\n${currentOutput}`
 			);
 		} catch (err) {
 			Common.logError("Error appeared...", err);
@@ -80,27 +86,23 @@ export class Generator {
 				(await Common.getTabStorage("failureTxt")) || "";
 			await Common.setFieldValue(
 				"failureTxt",
-				card.errorMessage + "\n" + currentFailure
+				`${card.errorMessage}\n${currentFailure}`
 			);
 		}
 
 		return card;
 	}
 
-	async #calculateProgress(cards) {
-		const percentage = parseInt(
-			(cards.length / this.genInputDto.standardizedWords.length) * 100
-		);
-
+	async calculateProgress(percentage) {
 		$("#progressbar").text(`${percentage}%`);
 		$("#progressbar").attr("style", `width: ${percentage}%`);
 	}
 
 	async generateCsv(cards) {
-		let cardLines = [];
-		let mappingLines = [];
+		const cardLines = [];
+		const mappingLines = [];
 
-		for (const card of cards.filter((c) => c.status === "SUCCESS")) {
+		for (const card of cards.filter(c => c.status === "SUCCESS")) {
 			cardLines.push([
 				card.cardInputDto.standardizedWord.word,
 				card.wordTypes,

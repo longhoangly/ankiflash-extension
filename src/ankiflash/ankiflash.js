@@ -108,7 +108,7 @@ export class AnkiFlash {
 				.filter(Boolean);
 
 			if (inputWords.length === 0) {
-				alert("No word found! Please check your input!");
+				Common.toastWarn("No word found! Please check your input!");
 				return;
 			}
 
@@ -124,23 +124,18 @@ export class AnkiFlash {
 			};
 
 			const gen = new Generator(genInputDto);
+			await gen.calculateProgress(0);
 			Common.logWarn("gen", gen);
 
 			const cards = await gen.generateCards();
 			Common.logWarn("cards", cards);
 
 			if (cards.length === 0) {
-				alert("No card generated! Please check your input!");
+				Common.toastWarn("No card generated! Please check your input!");
 				return;
 			}
 
-			if (
-				cards
-					.map((c) => {
-						return c.meaning;
-					})
-					.filter(Boolean).length > 0
-			) {
+			if (cards.map(c => c.meaning).filter(Boolean).length > 0) {
 				await gen.generateCsv(cards);
 			}
 
@@ -174,14 +169,17 @@ export class AnkiFlash {
 			case "failureTxt":
 				$("#failureLbl").html(`Failure: ${txtLines.length}`);
 				break;
+			default: {
+				throw new Error(`${fieldId} is not supported yet`);
+			}
 		}
 	}
 
 	static async #getTargetAsOptions() {
 		const source = await Common.getTabStorage("source");
 		return Constant.SUPPORTED_TRANSLATIONS.filter(
-			(t) => t.translation.source === source
-		).map((t) => {
+			t => t.translation.source === source
+		).map(t => {
 			return { value: t.translation.target, text: t.translation.target };
 		});
 	}
@@ -192,11 +190,11 @@ export class AnkiFlash {
 			await Common.getTabStorage("target")
 		);
 
-		const [dictionaries] = Constant.SUPPORTED_TRANSLATIONS.filter((t) =>
+		const [dictionaries] = Constant.SUPPORTED_TRANSLATIONS.filter(t =>
 			translation.equals(t.translation)
-		).map((t) => t.dictionaries);
+		).map(t => t.dictionaries);
 
-		return dictionaries.map((d) => {
+		return dictionaries.map(d => {
 			return { value: d.name, text: d.name };
 		});
 	}

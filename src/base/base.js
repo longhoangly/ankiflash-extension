@@ -21,7 +21,7 @@ export class Base {
 
 	static uuid() {
 		let dt = Date.now();
-		return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+		return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
 			const r = (dt + Math.random() * 16) % 16 | 0;
 			dt = Math.floor(dt / 16);
 			return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
@@ -65,7 +65,7 @@ export class Base {
 	static randomInt(min, max) {
 		min = Math.ceil(min);
 		max = Math.floor(max);
-		return parseInt(Math.floor(Math.random() * (max - min)) + min);
+		return parseInt(Math.floor(Math.random() * (max - min)) + min, 10);
 	}
 
 	static randomString(params) {
@@ -187,8 +187,8 @@ export class Base {
 		const uniqueValues = new Set([...arrayOne, ...arrayTwo]);
 
 		for (const v of uniqueValues) {
-			const aCount = arrayOne.filter((e) => e === v).length;
-			const bCount = arrayTwo.filter((e) => e === v).length;
+			const aCount = arrayOne.filter(e => e === v).length;
+			const bCount = arrayTwo.filter(e => e === v).length;
 			if (aCount !== bCount) return false;
 		}
 
@@ -249,7 +249,7 @@ export class Base {
 
 	static #decorLogMsg(args) {
 		let msgConfig = "%c ";
-		args.forEach((arg) => {
+		args.forEach(arg => {
 			switch (typeof arg) {
 				case "bigint":
 					msgConfig += "%o ";
@@ -391,12 +391,12 @@ export class Base {
 	static calc(str) {
 		str = str.replaceAll(" ", "");
 		const blocks = str.split(/[+-]/i);
-		const mainOperators = [...str.matchAll(/[+-]/g)].map((r) => r[0]);
+		const mainOperators = [...str.matchAll(/[+-]/g)].map(r => r[0]);
 
 		let blockValues = [];
 		for (const block of blocks) {
 			const numbers = block.split(/[/*]/i);
-			const subOperators = [...block.matchAll(/[/*]/g)].map((r) => r[0]);
+			const subOperators = [...block.matchAll(/[/*]/g)].map(r => r[0]);
 			blockValues.push(Base.#calcArray(numbers, subOperators));
 		}
 
@@ -526,7 +526,7 @@ export class Base {
 		}
 
 		if (keys.length > 0) {
-			await chrome.storage.local.remove(keys, (data) => {
+			await chrome.storage.local.remove(keys, data => {
 				Base.logInfo("Removed keys", keys, "from local storage", data);
 			});
 		} else {
@@ -543,7 +543,7 @@ export class Base {
 	static async getStorages(keys) {
 		const promise = await new Promise((resolve, reject) => {
 			// keys = null to get the whole storage
-			chrome.storage.local.get(keys, (data) => {
+			chrome.storage.local.get(keys, data => {
 				if (chrome.runtime.lastError) {
 					return reject(chrome.runtime.lastError);
 				}
@@ -850,25 +850,21 @@ export class Base {
 	static async getJsonContent(jsonPath) {
 		Base.logInfo("JQuery getting JSON file", jsonPath);
 
-		const json = await $.getJSON(jsonPath, (data) => {
+		return $.getJSON(jsonPath, data => {
 			Base.logInfo("Json", data);
-		}).fail((err) => {
+		}).fail(err => {
 			Base.logError("Error occurred", err);
 		});
-
-		return json;
 	}
 
 	static async getUrlContent(url) {
 		Base.logInfo("JQuery getting URL content", url);
 
-		const content = await $.get(url, (data) => {
+		return $.get(url, data => {
 			Base.logInfo("Content", data.slice(0, 500));
-		}).fail((err) => {
+		}).fail(err => {
 			Base.logError("Error occurred", err);
 		});
-
-		return content;
 	}
 
 	static async getCookie(cookieDetails) {
@@ -890,7 +886,7 @@ export class Base {
 		if (cookies !== null && cookies != undefined) {
 			Base.logDebug("Found raw cookies", cookieDetails, cookies);
 
-			cookies = cookies.filter((c) => {
+			cookies = cookies.filter(c => {
 				let rt = true;
 
 				for (const key of Object.keys(filters)) {
@@ -923,9 +919,9 @@ export class Base {
 			cookies
 		);
 
-		let removeResults = [];
+		const removeResults = [];
 		for (const cookie of cookies) {
-			let details = {
+			const details = {
 				// In case of partitioned cookie, cookieDetails will not have url, then use filter.domain
 				url: cookieDetails.url || filters.domain,
 				name: cookie.name,
@@ -944,30 +940,24 @@ export class Base {
 
 	static async getCookieString(cookieDetails, filters = {}) {
 		// filters = { domain: "xxx" }
-
 		const cookies = await Base.getCookies(cookieDetails, filters);
-
-		const cookieString = cookies
-			.map((c) => `${c.name}=${c.value}`)
-			.join("; ");
-
-		return cookieString;
+		return cookies.map(c => `${c.name}=${c.value}`).join("; ");
 	}
 
 	static async updateCookieString(cookieStorageKey, setCookies) {
 		let cookieString = (await Base.getStorage(cookieStorageKey)) || "";
 
 		if (setCookies.length > 0) {
-			let storageCookies = cookieString
+			const storageCookies = cookieString
 				.split(";")
-				.map((c) => c.trim())
-				.map((c) => {
+				.map(c => c.trim())
+				.map(c => {
 					return { name: c.split("=")[0], value: c.split("=")[1] };
 				});
 
 			// append new cookies which were not in storage before
 			for (const setCookie of setCookies.filter(
-				(sc) => !storageCookies.map((c) => c.name).includes(sc.name)
+				sc => !storageCookies.map(c => c.name).includes(sc.name)
 			)) {
 				storageCookies.push({
 					name: setCookie.name,
@@ -976,9 +966,9 @@ export class Base {
 			}
 
 			// update cookies already in storage string
-			storageCookies.forEach((storageCookie) => {
+			storageCookies.forEach(storageCookie => {
 				const [foundCookie] = setCookies.filter(
-					(c) => c.name === storageCookie.name
+					c => c.name === storageCookie.name
 				);
 				if (foundCookie) {
 					storageCookie.value = foundCookie.value;
@@ -986,7 +976,7 @@ export class Base {
 			});
 
 			cookieString = storageCookies
-				.map((c) => `${c.name}=${c.value}`)
+				.map(c => `${c.name}=${c.value}`)
 				.join("; ");
 
 			Base.logWarn(
@@ -1026,7 +1016,7 @@ export class Base {
 
 		if (isWaiting) {
 			await Base.waitUntil(
-				async (tabId) => {
+				async tabId => {
 					const isTabClosed = await Base.getStorage(tabId);
 					return {
 						isStopped:
@@ -1053,7 +1043,7 @@ export class Base {
 
 	static async #createBrowserTab(createProperties) {
 		const promise = await new Promise((resolve, reject) => {
-			chrome.tabs.create(createProperties, (createdTab) => {
+			chrome.tabs.create(createProperties, createdTab => {
 				if (chrome.runtime.lastError) {
 					return reject(chrome.runtime.lastError);
 				}
@@ -1076,7 +1066,7 @@ export class Base {
 
 	static async getCurrentTab() {
 		const promise = await new Promise((resolve, reject) => {
-			chrome.tabs.getCurrent((tab) => {
+			chrome.tabs.getCurrent(tab => {
 				if (chrome.runtime.lastError) {
 					return reject(chrome.runtime.lastError);
 				}
@@ -1089,7 +1079,7 @@ export class Base {
 
 	static async #queryBrowserTabs(queryInfo) {
 		const promise = await new Promise((resolve, reject) => {
-			chrome.tabs.query(queryInfo, (tabs) => {
+			chrome.tabs.query(queryInfo, tabs => {
 				if (chrome.runtime.lastError) {
 					return reject(chrome.runtime.lastError);
 				}
@@ -1183,7 +1173,7 @@ export class Base {
 
 		try {
 			const promise = await new Promise((resolve, reject) => {
-				chrome.tabs.sendMessage(tabId, msgObj, (response) => {
+				chrome.tabs.sendMessage(tabId, msgObj, response => {
 					Base.logWarn("Response from browser tab", response);
 
 					if (chrome.runtime.lastError) {
@@ -1203,7 +1193,7 @@ export class Base {
 
 		try {
 			const promise = await new Promise((resolve, reject) => {
-				chrome.runtime.sendMessage(msgObj, (response) => {
+				chrome.runtime.sendMessage(msgObj, response => {
 					Base.logWarn("Response from background", response);
 
 					if (chrome.runtime.lastError) {
@@ -1219,7 +1209,7 @@ export class Base {
 	}
 
 	static async delayTime(ms) {
-		return new Promise((res) => {
+		return new Promise(res => {
 			setTimeout(res, ms);
 			Base.logInfo(`wait for ${ms} ms...`);
 		});
@@ -1297,7 +1287,7 @@ export class Base {
 
 		// convert bytes to hex string
 		const hashHex = hashArray
-			.map((b) => b.toString(16).padStart(2, "0"))
+			.map(b => b.toString(16).padStart(2, "0"))
 			.join("");
 
 		Base.logWarn(message, "=> hased 256 to =>", hashHex);
@@ -1327,7 +1317,7 @@ export class Base {
 	static downloadCsvFile(name, rows, cellSeparator = ",") {
 		// each row is an array of cells
 		const csvContent = URL.createObjectURL(
-			new Blob([rows.map((e) => e.join(cellSeparator)).join("\n")], {
+			new Blob([rows.map(e => e.join(cellSeparator)).join("\n")], {
 				type: "application/csv",
 			})
 		);
@@ -1338,7 +1328,7 @@ export class Base {
 	static #downloadFile(name, content) {
 		const encodedUri = encodeURI(content);
 
-		let link = document.createElement("a");
+		const link = document.createElement("a");
 		link.style.display = "none";
 
 		link.setAttribute("href", encodedUri);
@@ -1352,7 +1342,7 @@ export class Base {
 	}
 
 	static async chromeDownloadFiles(urls, filename = "") {
-		let downloadInfos = [];
+		const downloadInfos = [];
 
 		for (const url of urls) {
 			const relativeFilePath =
@@ -1361,13 +1351,13 @@ export class Base {
 			const downloadId = await chrome.downloads.download({
 				filename: relativeFilePath,
 				conflictAction: "overwrite",
-				url: url,
+				url,
 			});
 
 			downloadInfos.push({
-				url: url,
+				url,
+				downloadId,
 				filename: relativeFilePath,
-				downloadId: downloadId,
 			});
 		}
 

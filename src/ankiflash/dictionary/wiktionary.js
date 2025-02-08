@@ -9,20 +9,6 @@ export class Wiktionary extends Dictionary {
 		super(genInputDto);
 	}
 
-	async standardizedWords() {
-		Common.logWarn(`[standardizedWords] ${Wiktionary.name}`);
-
-		let standardizedWords = [];
-		for (const word of this.genInputDto.words) {
-			standardizedWords.push({
-				word: word,
-				wordId: word,
-				wordOri: word,
-			});
-		}
-		return standardizedWords;
-	}
-
 	async getWordTypes(cardInputDto) {
 		Common.logWarn(`[getWordTypes] ${Wiktionary.name}`, cardInputDto);
 	}

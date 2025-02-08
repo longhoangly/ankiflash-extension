@@ -18,15 +18,15 @@ export class Dictionary {
 	async standardizedWords() {
 		Common.logWarn(`[standardizedWords] ${Dictionary.name}`);
 
-		let standardizedWords = [];
+		let stdWords = [];
 		for (const word of this.genInputDto.words) {
-			standardizedWords.push({
+			stdWords.push({
 				word: word,
 				wordId: word,
 				wordOri: word,
 			});
 		}
-		return standardizedWords;
+		return stdWords;
 	}
 
 	async getWordTypes(cardInputDto) {
